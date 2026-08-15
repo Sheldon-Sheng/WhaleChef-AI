@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/meal_plan_provider.dart';
 import '../data/local_db.dart';
-import '../models/user_profile.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
