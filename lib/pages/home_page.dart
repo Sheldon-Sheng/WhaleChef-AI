@@ -43,7 +43,7 @@ class _HomePageState extends State<HomePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<int>(
-                  value: dishesCount, decoration: const InputDecoration(labelText: '几道菜'),
+                  initialValue: dishesCount, decoration: const InputDecoration(labelText: '几道菜'),
                   items: [1,2,3,4,5].map((i) => DropdownMenuItem(value: i, child: Text('$i 道'))).toList(),
                   onChanged: (v) => setDialogState(() => dishesCount = v!),
                 ),
@@ -55,7 +55,7 @@ class _HomePageState extends State<HomePage> {
                 SwitchListTile(title: const Text('加汤'), value: wantSoup, onChanged: (v) => setDialogState(() => wantSoup = v)),
                 TextField(decoration: const InputDecoration(labelText: '烹饪时间限制（分钟）'), keyboardType: TextInputType.number, onChanged: (v) => cookingTime = int.tryParse(v) ?? 30),
                 DropdownButtonFormField<String>(
-                  value: cuisineStyle, decoration: const InputDecoration(labelText: '菜品风格'),
+                  initialValue: cuisineStyle, decoration: const InputDecoration(labelText: '菜品风格'),
                   items: ['中餐', '西餐', '日式'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                   onChanged: (v) => setDialogState(() => cuisineStyle = v!),
                 ),
