@@ -1,7 +1,6 @@
 // lib/services/meal_planner.dart
 import 'dart:convert';
 import '../data/local_db.dart';
-import '../models/user_profile.dart';
 import '../models/kitchen_item.dart';
 import '../models/recipe.dart';
 import '../models/weekly_plan.dart';
@@ -72,7 +71,15 @@ class MealPlannerService {
     final result = await _api.generateMealPlan(prompt);
 
     // 5. 解析结果并保存到数据库
-    await _savePlan(result, user);
+    await _savePlan(
+      result,
+      dishesCount: dishesCount,
+      meatDishes: meatDishes,
+      veggieDishes: veggieDishes,
+      wantSoup: wantSoup,
+      cookingTimeMinutes: cookingTimeMinutes,
+      cuisineStyle: cuisineStyle,
+    );
 
     return result;
   }
@@ -118,18 +125,70 @@ class MealPlannerService {
 
     final result = await _api.generateMealPlan(prompt);
 
-    // 删除旧计划中剩余天数的菜谱和采购清单
+    // 删除旧活跃计划中剩余天数的菜谱和采购清单
     final activePlan = await _db.getActivePlan();
     if (activePlan != null) {
-      // 这些会被新结果覆盖（实际写入时替换）
+      await _db.deleteRecipesByPlanAndDayRange(activePlan.id!, startFromDay);
+      await _db.deleteShoppingItemsByPlan(activePlan.id!);
+      // 采购清单后续会由 _savePlan 根据新计划重新生成
     }
 
-    await _savePlan(result, user);
+    await _savePlan(
+      result,
+      dishesCount: dishesCount,
+      meatDishes: meatDishes,
+      veggieDishes: veggieDishes,
+      wantSoup: wantSoup,
+      cookingTimeMinutes: cookingTimeMinutes,
+      cuisineStyle: cuisineStyle,
+    );
     return result;
   }
 
+  /// 根据当前活跃计划生成采购清单
+  Future<List<ShoppingItem>> generateShoppingList() async {
+    final activePlan = await _db.getActivePlan();
+    if (activePlan == null) return [];
+
+    final recipes = await _db.getRecipesByPlan(activePlan.id!);
+    final ingredientNames = <String>{};
+    for (final recipe in recipes) {
+      final names = (recipe.ingredientList.isNotEmpty)
+          ? (jsonDecode(recipe.ingredientList) as List).cast<String>()
+          : <String>[];
+      ingredientNames.addAll(names);
+    }
+
+    // 已有的采购清单（含调味料等来源），避免重复
+    final existingItems = await _db.getShoppingItems(activePlan.id!);
+    final existingNames = existingItems.map((i) => i.name).toSet();
+
+    final items = <ShoppingItem>[];
+    for (final name in ingredientNames) {
+      if (existingNames.contains(name)) continue;
+      items.add(ShoppingItem(
+        planId: activePlan.id!,
+        name: name,
+        quantity: '适量',
+        source: 'plan',
+      ));
+    }
+    if (items.isNotEmpty) {
+      await _db.addShoppingItems(items);
+    }
+    return [...existingItems, ...items];
+  }
+
   /// 保存解析后的菜谱到数据库
-  Future<void> _savePlan(Map<String, dynamic> result, UserProfile user) async {
+  Future<void> _savePlan(
+    Map<String, dynamic> result, {
+    int dishesCount = 3,
+    int meatDishes = 1,
+    int veggieDishes = 2,
+    bool wantSoup = true,
+    int cookingTimeMinutes = 30,
+    String cuisineStyle = '中餐',
+  }) async {
     final weekPlan = result['week_plan'] as Map<String, dynamic>?;
     if (weekPlan == null) throw Exception('返回数据格式错误：缺少 week_plan');
 
@@ -142,8 +201,12 @@ class MealPlannerService {
     // 创建新计划
     final weekStart = DateTime.now().millisecondsSinceEpoch;
     final planConfig = jsonEncode({
-      'dishes_count': 3, 'meat_dishes': 1, 'veggie_dishes': 2,
-      'want_soup': true, 'cooking_time': 30, 'cuisine_style': '中餐',
+      'dishes_count': dishesCount,
+      'meat_dishes': meatDishes,
+      'veggie_dishes': veggieDishes,
+      'want_soup': wantSoup,
+      'cooking_time': cookingTimeMinutes,
+      'cuisine_style': cuisineStyle,
     });
     final planId = await _db.addWeeklyPlan(WeeklyPlan(
       weekStart: weekStart,

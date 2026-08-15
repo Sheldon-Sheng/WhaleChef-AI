@@ -216,6 +216,17 @@ class LocalDB {
     return maps.map((m) => Recipe.fromMap(m)).toList();
   }
 
+  Future<void> deleteRecipesByPlanAndDayRange(int planId, int startDay) async {
+    await db.delete('recipes',
+      where: 'plan_id = ? AND day_index >= ?',
+      whereArgs: [planId, startDay],
+    );
+  }
+
+  Future<void> deleteShoppingItemsByPlan(int planId) async {
+    await db.delete('shopping_items', where: 'plan_id = ?', whereArgs: [planId]);
+  }
+
   Future<List<Recipe>> getRecipesByPlanAndDay(int planId, int dayIndex) async {
     final maps = await db.query('recipes',
       where: 'plan_id = ? AND day_index = ?',
