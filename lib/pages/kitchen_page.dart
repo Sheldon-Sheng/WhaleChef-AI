@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/kitchen_provider.dart';
+import '../providers/meal_plan_provider.dart';
 import '../models/kitchen_item.dart';
 import '../widgets/confirm_dialog.dart';
 
@@ -108,6 +109,8 @@ class _KitchenPageState extends State<KitchenPage> with SingleTickerProviderStat
                       if (shouldRegenerate == true) {
                         // 触发重排
                         if (context.mounted) {
+                          final currentDay = DateTime.now().weekday - 1;
+                          context.read<MealPlanProvider>().regenerateRemainingDays(currentDay);
                           Navigator.pushReplacementNamed(context, '/home');
                         }
                       }

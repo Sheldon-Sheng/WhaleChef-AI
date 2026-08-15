@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/meal_plan_provider.dart';
+import '../providers/kitchen_provider.dart';
 import '../data/local_db.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -33,9 +34,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _saveConfig() async {
     await _db.saveAIConfig(_apiKeyController.text, _modelController.text);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AI 配置已保存')));
-    }
+    // 刷新各 Provider 持有的 MealPlannerService 的 API 配置
+    if (!mounted) return;
+    final mealPlanProvider = context.read<MealPlanProvider>();
+    final kitchenProvider = context.read<KitchenProvider>();
+    await mealPlanProvider.refreshAPIConfig();
+    await kitchenProvider.refreshAPIConfig();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AI 配置已保存')));
   }
 
   Future<void> _deleteHistory() async {

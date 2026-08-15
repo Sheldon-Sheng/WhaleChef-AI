@@ -62,7 +62,7 @@ class _AIGeneratingOverlayState extends State<AIGeneratingOverlay> {
             children: [
               Image.asset(widget.isFailed ? widget.failedImageAsset : widget.imageAsset,
                 height: 300, fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (_, __, _) => Container(
                   height: 300, color: Colors.grey[200],
                   child: const Icon(Icons.image, size: 64, color: Colors.grey),
                 ),

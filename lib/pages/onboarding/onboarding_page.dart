@@ -125,7 +125,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             borderRadius: BorderRadius.circular(16),
             child: Image.asset('assets/images/welcome_1080x1920.png',
               height: 250, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, __, _) => Container(
                 height: 250, color: Colors.orange[100],
                 child: const Icon(Icons.restaurant, size: 80, color: Colors.orange),
               ),
@@ -145,7 +145,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       title: '基本信息',
       children: [
         TextField(decoration: const InputDecoration(labelText: '年龄'), keyboardType: TextInputType.number, onChanged: (v) => _age = int.tryParse(v) ?? 25),
-        DropdownButtonFormField(value: _gender, items: const [DropdownMenuItem(value: '男', child: Text('男')), DropdownMenuItem(value: '女', child: Text('女'))], onChanged: (v) => setState(() => _gender = v!), decoration: const InputDecoration(labelText: '性别')),
+        DropdownButtonFormField(initialValue: _gender, items: const [DropdownMenuItem(value: '男', child: Text('男')), DropdownMenuItem(value: '女', child: Text('女'))], onChanged: (v) => setState(() => _gender = v!), decoration: const InputDecoration(labelText: '性别')),
         TextField(decoration: const InputDecoration(labelText: '身高 (cm)'), keyboardType: TextInputType.number, onChanged: (v) => _height = double.tryParse(v) ?? 170),
         TextField(decoration: const InputDecoration(labelText: '体重 (kg)'), keyboardType: TextInputType.number, onChanged: (v) => _weight = double.tryParse(v) ?? 65),
       ],

@@ -89,6 +89,11 @@ class MealPlanProvider extends ChangeNotifier {
     await loadActivePlan();
   }
 
+  /// 重新加载 API 配置（用户修改设置后调用）
+  Future<void> refreshAPIConfig() async {
+    await _mealPlanner.refreshAPIConfig();
+  }
+
   Future<void> toggleFavorite(int recipeId, bool isFavorite) async {
     await _db.toggleFavorite(recipeId, isFavorite);
     await loadActivePlan();

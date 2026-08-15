@@ -187,7 +187,7 @@ class _HomePageState extends State<HomePage> {
                 leading: const Icon(Icons.shopping_cart, color: Colors.orange),
                 title: Text('采购清单（$unpurchasedCount 项待购）'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showShoppingList(context, shoppingItems, mealPlanProvider),
+                onTap: () => _showShoppingList(context),
               ),
             ),
 
@@ -229,31 +229,35 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showShoppingList(BuildContext context, List<dynamic> items, MealPlanProvider provider) {
+  void _showShoppingList(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => DraggableScrollableSheet(
         initialChildSize: 0.6,
-        builder: (_, scrollController) => ListView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Text('采购清单', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const Divider(),
-            ...items.map((item) => CheckboxListTile(
-              title: Text(item.name),
-              subtitle: Text(item.quantity),
-              value: item.purchased,
-              onChanged: (v) {
-                if (v == true) {
-                  provider.markPurchased(item.id!, item.name, item.quantity);
-                  Navigator.pop(ctx);
-                }
-              },
-            )),
-          ],
-        ),
+        builder: (_, scrollController) {
+          // 在 sheet 内 watch provider 来获取最新状态，勾选后列表就地刷新
+          final provider = context.watch<MealPlanProvider>();
+          final items = provider.shoppingItems;
+          return ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(16),
+            children: [
+              const Text('采购清单', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Divider(),
+              ...items.map((item) => CheckboxListTile(
+                title: Text(item.name),
+                subtitle: Text(item.quantity),
+                value: item.purchased,
+                onChanged: (v) {
+                  if (v == true) {
+                    provider.markPurchased(item.id!, item.name, item.quantity);
+                  }
+                },
+              )),
+            ],
+          );
+        },
       ),
     );
   }

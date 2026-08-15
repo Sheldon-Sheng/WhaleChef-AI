@@ -38,12 +38,15 @@ class KitchenProvider extends ChangeNotifier {
     await loadItems();
   }
 
-  /// 标记调味料为"无"，加入采购清单，返回是否建议重排（调味料变无时）
-  Future<bool> setSeasoningUnavailable(int id) async {
+  /// 标记调味料为"无"，加入采购清单
+  Future<void> setSeasoningUnavailable(int id) async {
     final item = _items.firstWhere((i) => i.id == id);
-    await _db.updateKitchenItem(item.copyWith(isAvailable: false));
     await _mealPlanner.handleSeasoningOut(item);
     await loadItems();
-    return true; // true = 建议重排
+  }
+
+  /// 重新加载 API 配置（用户修改设置后调用）
+  Future<void> refreshAPIConfig() async {
+    await _mealPlanner.refreshAPIConfig();
   }
 }
