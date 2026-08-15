@@ -131,7 +131,6 @@ class _HomePageState extends State<HomePage> {
     }
 
     // 有活跃计划，显示菜谱
-    final recipes = mealPlanProvider.currentRecipes;
     final shoppingItems = mealPlanProvider.shoppingItems;
     final unpurchasedCount = shoppingItems.where((i) => !i.purchased).length;
     final weekStart = DateTime.fromMillisecondsSinceEpoch(mealPlanProvider.activePlan!.weekStart);
