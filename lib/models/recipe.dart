@@ -1,4 +1,13 @@
 // lib/models/recipe.dart
+import 'dart:convert';
+
+/// 菜谱中的一种食材（带数量）
+class RecipeIngredient {
+  final String name;
+  final String quantity; // 如 "2个"、"500g"、"适量"
+  const RecipeIngredient({required this.name, this.quantity = ''});
+}
+
 class Recipe {
   final int? id;
   final int planId;
@@ -8,7 +17,8 @@ class Recipe {
   final String description;
   final double? calories;
   final bool isFavorite;
-  final String ingredientList; // 食材 JSON
+  final String ingredientList; // 食材 JSON: [{"name","quantity"}]
+  final String seasoningList;  // 调味品 JSON: ["盐"]
 
   Recipe({
     this.id,
@@ -20,7 +30,37 @@ class Recipe {
     this.calories,
     this.isFavorite = false,
     this.ingredientList = '[]',
+    this.seasoningList = '[]',
   });
+
+  /// 解析食材（仅新格式；解析失败返回空）
+  List<RecipeIngredient> get ingredientItems {
+    if (ingredientList.isEmpty) return const [];
+    try {
+      final list = jsonDecode(ingredientList) as List;
+      return list.map((e) {
+        if (e is Map) {
+          return RecipeIngredient(
+            name: (e['name'] ?? '').toString(),
+            quantity: (e['quantity'] ?? '').toString(),
+          );
+        }
+        return RecipeIngredient(name: e.toString());
+      }).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// 解析调味品
+  List<String> get seasoningItems {
+    if (seasoningList.isEmpty) return const [];
+    try {
+      return (jsonDecode(seasoningList) as List).cast<String>();
+    } catch (_) {
+      return const [];
+    }
+  }
 
   Map<String, dynamic> toMap() => {
     if (id != null) 'id': id,
@@ -32,6 +72,7 @@ class Recipe {
     'calories': calories,
     'is_favorite': isFavorite ? 1 : 0,
     'ingredient_list': ingredientList,
+    'seasoning_list': seasoningList,
   };
 
   factory Recipe.fromMap(Map<String, dynamic> map) => Recipe(
@@ -44,12 +85,14 @@ class Recipe {
     calories: map['calories'] as double?,
     isFavorite: (map['is_favorite'] as int?) == 1,
     ingredientList: map['ingredient_list'] as String? ?? '[]',
+    seasoningList: map['seasoning_list'] as String? ?? '[]',
   );
 
-  Recipe copyWith({bool? isFavorite}) => Recipe(
+  Recipe copyWith({bool? isFavorite, String? seasoningList}) => Recipe(
     id: id, planId: planId, dayIndex: dayIndex,
     mealType: mealType, name: name, description: description,
     calories: calories, ingredientList: ingredientList,
+    seasoningList: seasoningList ?? this.seasoningList,
     isFavorite: isFavorite ?? this.isFavorite,
   );
 }
