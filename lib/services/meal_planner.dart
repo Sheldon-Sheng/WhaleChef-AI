@@ -35,6 +35,11 @@ class MealPlannerService {
     bool wantSoup = true,
     int cookingTimeMinutes = 30,
     String cuisineStyle = '中餐',
+    bool wantBreakfast = true,
+    bool wantLunch = true,
+    bool wantDinner = true,
+    bool preferFavorites = false,
+    int favoriteCount = 0,
   }) async {
     await _initAPI();
 
@@ -52,6 +57,12 @@ class MealPlannerService {
     final now = DateTime.now().millisecondsSinceEpoch;
     final historyRecipes = await _db.getRecipesInDateRange(oneMonthAgo, now);
 
+    // 2b. 获取收藏菜谱
+    List<Recipe> favoriteRecipes = [];
+    if (preferFavorites && favoriteCount > 0) {
+      favoriteRecipes = await _db.getFavoriteRecipes();
+    }
+
     // 3. 组装 Prompt
     final prompt = PromptBuilder.buildPrompt(
       user: user,
@@ -59,12 +70,18 @@ class MealPlannerService {
       tools: tools,
       seasonings: seasonings,
       historyRecipes: historyRecipes,
+      favoriteRecipes: favoriteRecipes,
       dishesCount: dishesCount,
       meatDishes: meatDishes,
       veggieDishes: veggieDishes,
       wantSoup: wantSoup,
       cookingTimeMinutes: cookingTimeMinutes,
       cuisineStyle: cuisineStyle,
+      wantBreakfast: wantBreakfast,
+      wantLunch: wantLunch,
+      wantDinner: wantDinner,
+      preferFavorites: preferFavorites,
+      favoriteCount: favoriteCount,
     );
 
     // 4. 调用 API
@@ -93,6 +110,9 @@ class MealPlannerService {
     bool wantSoup = true,
     int cookingTimeMinutes = 30,
     String cuisineStyle = '中餐',
+    bool wantBreakfast = true,
+    bool wantLunch = true,
+    bool wantDinner = true,
   }) async {
     await _initAPI();
 
@@ -121,6 +141,9 @@ class MealPlannerService {
       cookingTimeMinutes: cookingTimeMinutes,
       cuisineStyle: cuisineStyle,
       startFromDay: startFromDay,
+      wantBreakfast: wantBreakfast,
+      wantLunch: wantLunch,
+      wantDinner: wantDinner,
     );
 
     final result = await _api.generateMealPlan(prompt);
@@ -153,9 +176,7 @@ class MealPlannerService {
     final recipes = await _db.getRecipesByPlan(activePlan.id!);
     final ingredientNames = <String>{};
     for (final recipe in recipes) {
-      final names = (recipe.ingredientList.isNotEmpty)
-          ? (jsonDecode(recipe.ingredientList) as List).cast<String>()
-          : <String>[];
+      final names = recipe.ingredientItems.map((i) => i.name);
       ingredientNames.addAll(names);
     }
 
@@ -219,7 +240,17 @@ class MealPlannerService {
       final dayIndex = dayData['day'] as int? ?? 1;
       final meals = dayData['meals'] as List? ?? [];
       for (final meal in meals) {
-        final ingredients = (meal['ingredients'] as List?)?.map((e) => e.toString()).toList() ?? [];
+        final rawIngredients = meal['ingredients'] as List? ?? [];
+        final ingredients = rawIngredients.map((e) {
+          if (e is Map) {
+            return {
+              'name': (e['name'] ?? '').toString(),
+              'quantity': (e['quantity'] ?? '').toString(),
+            };
+          }
+          return {'name': e.toString(), 'quantity': ''};
+        }).toList();
+        final seasonings = (meal['seasonings'] as List?)?.map((e) => e.toString()).toList() ?? [];
         await _db.addRecipe(Recipe(
           planId: planId,
           dayIndex: dayIndex - 1,
@@ -228,6 +259,7 @@ class MealPlannerService {
           description: meal['description'] as String? ?? '',
           calories: (meal['calories'] as num?)?.toDouble(),
           ingredientList: jsonEncode(ingredients),
+          seasoningList: jsonEncode(seasonings),
         ));
       }
     }

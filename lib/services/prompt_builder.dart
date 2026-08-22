@@ -12,13 +12,19 @@ class PromptBuilder {
     required List<KitchenItem> tools,
     required List<KitchenItem> seasonings,
     required List<Recipe> historyRecipes,
+    List<Recipe> favoriteRecipes = const [],
     int dishesCount = 3,
     int meatDishes = 1,
     int veggieDishes = 2,
     bool wantSoup = true,
     int cookingTimeMinutes = 30,
     String cuisineStyle = '中餐',
-    int? startFromDay, // 重排时从第几天开始
+    int? startFromDay,
+    bool wantBreakfast = true,
+    bool wantLunch = true,
+    bool wantDinner = true,
+    bool preferFavorites = false,
+    int favoriteCount = 0,
   }) {
     final buffer = StringBuffer();
 
@@ -82,6 +88,15 @@ class PromptBuilder {
     buffer.writeln('- 每餐 $dishesCount 道菜（$meatDishes 荤 $veggieDishes 素）${wantSoup ? '，加汤' : ''}');
     buffer.writeln('- 烹饪时间限制：$cookingTimeMinutes 分钟内完成');
     buffer.writeln('- 菜品风格：$cuisineStyle');
+
+    // 餐次选择
+    final List<String> selectedMeals = [];
+    if (wantBreakfast) selectedMeals.add('早餐');
+    if (wantLunch) selectedMeals.add('午餐');
+    if (wantDinner) selectedMeals.add('晚餐');
+    if (selectedMeals.length < 3) {
+      buffer.writeln('- 只需规划以下餐次：${selectedMeals.join('、')}');
+    }
     buffer.writeln('');
 
     // 历史菜谱
@@ -90,6 +105,21 @@ class PromptBuilder {
       for (final r in historyRecipes) {
         buffer.writeln('- ${r.name}（${r.mealType}）');
       }
+      buffer.writeln('');
+    }
+
+    // 收藏菜谱优先
+    if (preferFavorites && favoriteCount > 0) {
+      buffer.writeln('## 收藏菜谱优先');
+      buffer.writeln('- 请优先从以下收藏菜谱中选择 $favoriteCount 道菜放入计划：');
+      if (favoriteRecipes.isEmpty) {
+        buffer.writeln('- 用户暂无收藏菜谱');
+      } else {
+        for (final r in favoriteRecipes) {
+          buffer.writeln('- ${r.name}（${r.mealType}）${r.description.isNotEmpty ? '：${r.description}' : ''}');
+        }
+      }
+      buffer.writeln('- 如果收藏菜谱数量不足 $favoriteCount，则由你根据实际情况为剩余空缺规划新菜谱，无需提示用户。');
       buffer.writeln('');
     }
 
@@ -114,9 +144,12 @@ class PromptBuilder {
       {
         "day": 1,
         "meals": [
-          {"type": "早餐", "name": "菜名", "description": "简要做法说明", "calories": 300, "ingredients": ["食材1", "食材2"]},
-          {"type": "午餐", "name": "菜名", "description": "简要做法说明", "calories": 500, "ingredients": ["食材1", "食材2"]},
-          {"type": "晚餐", "name": "菜名", "description": "简要做法说明", "calories": 400, "ingredients": ["食材1", "食材2"]}
+          {"type": "早餐", "name": "菜名", "description": "简要做法说明", "calories": 300,
+           "ingredients": [{"name": "食材1", "quantity": "数量（如 2个、500g）"}],
+           "seasonings": ["调味品1", "调味品2"]},
+          {"type": "午餐", "name": "菜名", "description": "简要做法说明", "calories": 500,
+           "ingredients": [{"name": "食材1", "quantity": "数量（如 2个、500g）"}],
+           "seasonings": ["调味品1", "调味品2"]}
         ]
       }
     ]
