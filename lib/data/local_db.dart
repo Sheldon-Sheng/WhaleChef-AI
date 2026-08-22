@@ -20,9 +20,42 @@ class LocalDB {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       join(dbPath, 'deepfry.db'),
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 3) {
+      // 确保 amount/unit 列存在（老库可能缺少）
+      final cols = await db.rawQuery('PRAGMA table_info(ingredients)');
+      final colNames = cols.map((c) => c['name']).toSet();
+      if (!colNames.contains('amount')) {
+        await db.execute('ALTER TABLE ingredients ADD COLUMN amount REAL DEFAULT 0');
+      }
+      if (!colNames.contains('unit')) {
+        await db.execute('ALTER TABLE ingredients ADD COLUMN unit TEXT DEFAULT ""');
+      }
+      // 解析已有 quantity 数据并填入 amount/unit（若 amount 为 0）
+      final rows = await db.query('ingredients');
+      for (final row in rows) {
+        final qty = row['quantity'] as String? ?? '';
+        final curAmount = row['amount'] as num? ?? 0;
+        if (curAmount == 0 && qty.isNotEmpty) {
+          final match = RegExp(r'^([\d.]+)\s*(.*)$').firstMatch(qty.trim());
+          if (match != null) {
+            final amount = double.tryParse(match.group(1)!) ?? 0;
+            final unit = match.group(2)?.trim() ?? '';
+            await db.update('ingredients', {'amount': amount, 'unit': unit}, where: 'id = ?', whereArgs: [row['id']]);
+          } else {
+            await db.update('ingredients', {'amount': 0, 'unit': qty}, where: 'id = ?', whereArgs: [row['id']]);
+          }
+        } else if (curAmount == 0) {
+          await db.update('ingredients', {'unit': qty}, where: 'id = ?', whereArgs: [row['id']]);
+        }
+      }
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -47,7 +80,8 @@ class LocalDB {
       CREATE TABLE ingredients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        quantity TEXT NOT NULL,
+        amount REAL NOT NULL DEFAULT 0,
+        unit TEXT NOT NULL DEFAULT '',
         category TEXT,
         updated_at INTEGER NOT NULL
       )
@@ -129,6 +163,33 @@ class LocalDB {
     return maps.map((m) => Ingredient.fromMap(m)).toList();
   }
 
+  Future<Ingredient?> getIngredientByName(String name) async {
+    final maps = await db.query('ingredients', where: 'name = ?', whereArgs: [name], limit: 1);
+    if (maps.isEmpty) return null;
+    return Ingredient.fromMap(maps.first);
+  }
+
+  Future<void> saveIngredient(String name, double amount, String unit) async {
+    final existing = await getIngredientByName(name);
+    if (existing != null) {
+      await db.update('ingredients',
+        {'amount': amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+        where: 'id = ?', whereArgs: [existing.id],
+      );
+    } else {
+      await db.insert('ingredients', {
+        'name': name,
+        'amount': amount,
+        'unit': unit,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      });
+    }
+  }
+
+  Future<void> deleteShoppingItem(int itemId) async {
+    await db.delete('shopping_items', where: 'id = ?', whereArgs: [itemId]);
+  }
+
   Future<int> addIngredient(Ingredient item) async {
     return await db.insert('ingredients', item.toMap());
   }
@@ -141,8 +202,8 @@ class LocalDB {
     await db.delete('ingredients', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<void> updateIngredientQuantity(int id, String newQuantity) async {
-    await db.update('ingredients', {'quantity': newQuantity, 'updated_at': DateTime.now().millisecondsSinceEpoch}, where: 'id = ?', whereArgs: [id]);
+  Future<void> updateIngredientQuantity(int id, double amount, String unit) async {
+    await db.update('ingredients', {'amount': amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch}, where: 'id = ?', whereArgs: [id]);
   }
 
   // === Kitchen Items ===
@@ -279,21 +340,64 @@ class LocalDB {
     return maps.map((m) => ShoppingItem.fromMap(m)).toList();
   }
 
+  Future<void> deleteShoppingItemsByNames(int planId, List<String> names) async {
+    for (final name in names) {
+      await db.delete('shopping_items',
+        where: 'plan_id = ? AND name = ?',
+        whereArgs: [planId, name],
+      );
+    }
+  }
+
+  Future<void> batchMarkPurchased(List<({int itemId, String name, String quantity})> items) async {
+    await db.transaction((txn) async {
+      for (final item in items) {
+        final match = RegExp(r'^([\d.]+)\s*(.*)$').firstMatch(item.quantity.trim());
+        final amount = (match != null) ? (double.tryParse(match.group(1)!) ?? 0) : 0.0;
+        final unit = (match != null) ? (match.group(2)?.trim() ?? '') : item.quantity;
+
+        // 更新冰箱库存
+        final existing = await txn.query('ingredients', where: 'name = ?', whereArgs: [item.name], limit: 1);
+        if (existing.isNotEmpty) {
+          await txn.update('ingredients',
+            {'amount': amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+            where: 'name = ?', whereArgs: [item.name],
+          );
+        } else {
+          await txn.insert('ingredients', {
+            'name': item.name,
+            'amount': amount,
+            'unit': unit,
+            'updated_at': DateTime.now().millisecondsSinceEpoch,
+          });
+        }
+        // 删除采购项
+        await txn.delete('shopping_items', where: 'id = ?', whereArgs: [item.itemId]);
+      }
+    });
+  }
+
   Future<void> markPurchased(int itemId, String name, String quantity) async {
     await db.transaction((txn) async {
+      // 解析数量字符串
+      final match = RegExp(r'^([\d.]+)\s*(.*)$').firstMatch(quantity.trim());
+      final amount = (match != null) ? (double.tryParse(match.group(1)!) ?? 0) : 0.0;
+      final unit = (match != null) ? (match.group(2)?.trim() ?? '') : quantity;
+
       // 更新冰箱库存
       final existing = await txn.query('ingredients', where: 'name = ?', whereArgs: [name], limit: 1);
       if (existing.isNotEmpty) {
         // 已存在，更新数量
         await txn.update('ingredients',
-          {'quantity': quantity, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+          {'amount': amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
           where: 'name = ?', whereArgs: [name],
         );
       } else {
         // 不存在，新增
         await txn.insert('ingredients', {
           'name': name,
-          'quantity': quantity,
+          'amount': amount,
+          'unit': unit,
           'updated_at': DateTime.now().millisecondsSinceEpoch,
         });
       }
