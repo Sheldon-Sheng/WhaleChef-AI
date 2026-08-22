@@ -1,5 +1,4 @@
 // lib/pages/recipe_detail_page.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/recipe.dart';
@@ -14,15 +13,8 @@ class RecipeDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<MealPlanProvider>();
-
-    // 解析食材列表
-    List<String> ingredients = [];
-    if (recipe.ingredientList.isNotEmpty) {
-      try {
-        final list = jsonDecode(recipe.ingredientList) as List;
-        ingredients = list.cast<String>();
-      } catch (_) {}
-    }
+    final ingredients = recipe.ingredientItems;
+    final seasonings = recipe.seasoningItems;
 
     return Scaffold(
       appBar: AppBar(
@@ -99,18 +91,27 @@ class RecipeDetailPage extends StatelessWidget {
             const Text('食材清单', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             if (ingredients.isEmpty)
-              const Text('暂无食材信息', style: TextStyle(color: Colors.grey))
+              const Text('无食材信息', style: TextStyle(color: Colors.grey))
             else
-              ...ingredients.map((ingredient) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
+              ...ingredients.map((ing) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
                     child: Row(
                       children: [
                         const Icon(Icons.circle, size: 6, color: kSeedBlue),
-                        const SizedBox(width: 10),
-                        Text(ingredient, style: const TextStyle(fontSize: 14)),
+                        const SizedBox(width: 8),
+                        Text(
+                          ing.quantity.isEmpty ? ing.name : '${ing.name} ${ing.quantity}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
                       ],
                     ),
                   )),
+            if (seasonings.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text('调味品', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text(seasonings.join('、'), style: const TextStyle(fontSize: 14, color: Colors.grey)),
+            ],
           ],
         ),
       ),

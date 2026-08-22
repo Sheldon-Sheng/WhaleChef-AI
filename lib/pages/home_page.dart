@@ -321,64 +321,12 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // 先检查冰箱中缺少哪些食材（在采购清单中但不在冰箱中）
-    final missing = await provider.checkMissingIngredients(_selectedDay);
-
-    // 如果有缺少的食材，询问用户是否已购买
-    List<String> purchasedNames = [];
-    if (missing.isNotEmpty) {
-      final action = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('食材确认'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('以下食材冰箱中没有，但在采购清单中：'),
-              const SizedBox(height: 12),
-              ...missing.map((name) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.shopping_cart, size: 16, color: kSeedBlue),
-                    const SizedBox(width: 8),
-                    Text(name, style: const TextStyle(fontSize: 14)),
-                  ],
-                ),
-              )),
-              const SizedBox(height: 16),
-              const Text('是否已采购了这些食材？', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 'skip'),
-              child: const Text('尚未采购，跳过'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, 'purchased'),
-              child: const Text('已采购'),
-            ),
-          ],
-        ),
-      );
-
-      if (action == 'purchased') {
-        purchasedNames = missing;
-      } else if (action == 'skip') {
-        // 用户选择跳过，只处理冰箱已有的食材
-      } else {
-        return; // 取消
-      }
-    }
-
     // 最终确认
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('确认完成'),
-        content: const Text('确认完成今日烹饪吗？\n\n冰箱中已有的食材将被标记为已用完，已采购的食材将移入冰箱后标记为已用完。'),
+        content: const Text('确认完成今日烹饪吗？\n\n将从冰箱扣除今日所需食材，不足部分从采购清单中扣除。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
           ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确认完成')),
@@ -387,7 +335,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (confirm == true && mounted) {
-      await provider.completeTodayCooking(_selectedDay, purchasedNames: purchasedNames);
+      await provider.completeTodayCooking(_selectedDay);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已完成今日烹饪！')),
