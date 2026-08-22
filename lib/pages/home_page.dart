@@ -141,7 +141,6 @@ class _HomePageState extends State<HomePage> {
     if (mealPlanProvider.status == GenerationStatus.generating) {
       return AIGeneratingOverlay(
         imageAsset: 'assets/images/loading.png',
-        failedImageAsset: 'assets/images/ai_failed_1080x1920.png',
       );
     }
 
@@ -149,7 +148,6 @@ class _HomePageState extends State<HomePage> {
     if (mealPlanProvider.status == GenerationStatus.failed) {
       return AIGeneratingOverlay(
         imageAsset: 'assets/images/loading.png',
-        failedImageAsset: 'assets/images/ai_failed_1080x1920.png',
         isFailed: true,
         errorMessage: mealPlanProvider.errorMessage,
         onRetry: () => mealPlanProvider.generateWeekPlan(),

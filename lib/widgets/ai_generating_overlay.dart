@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 class AIGeneratingOverlay extends StatefulWidget {
   final String imageAsset;
-  final String failedImageAsset;
   final String? errorMessage;
   final bool isFailed;
   final VoidCallback? onRetry;
@@ -12,7 +11,6 @@ class AIGeneratingOverlay extends StatefulWidget {
   const AIGeneratingOverlay({
     super.key,
     required this.imageAsset,
-    required this.failedImageAsset,
     this.errorMessage,
     this.isFailed = false,
     this.onRetry,
@@ -53,44 +51,58 @@ class _AIGeneratingOverlayState extends State<AIGeneratingOverlay> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(widget.isFailed ? widget.failedImageAsset : widget.imageAsset,
-                height: 300, fit: BoxFit.contain,
-                errorBuilder: (_, __, _) => Container(
-                  height: 300, color: Colors.grey[200],
-                  child: const Icon(Icons.image, size: 64, color: Colors.grey),
-                ),
-              ),
-              const SizedBox(height: 32),
-              if (widget.isFailed) ...[
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(widget.errorMessage ?? '生成失败', style: const TextStyle(fontSize: 16, color: Colors.red)),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: widget.onRetry,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('重试'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  ),
-                ),
-              ] else ...[
-                LinearProgressIndicator(value: _progress, minHeight: 8, borderRadius: BorderRadius.circular(4)),
-                const SizedBox(height: 16),
-                Text('${(_progress * 100).toInt()}%', style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                const SizedBox(height: 8),
-                const Text('正在为您规划菜谱...', style: TextStyle(fontSize: 16)),
-              ],
-            ],
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 全屏背景图
+          Image.asset(
+            widget.imageAsset,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: Colors.blueGrey[900],
+              child: const Icon(Icons.image, size: 64, color: Colors.white70),
+            ),
           ),
-        ),
+          // 前景内容 + 半透明遮罩保证可读性
+          Center(
+            child: Container(
+              margin: const EdgeInsets.all(32),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.isFailed) ...[
+                    const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+                    const SizedBox(height: 16),
+                    Text(widget.errorMessage ?? '生成失败',
+                        style: const TextStyle(fontSize: 16, color: Colors.white)),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: widget.onRetry,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('重试'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      ),
+                    ),
+                  ] else ...[
+                    LinearProgressIndicator(value: _progress, minHeight: 8, borderRadius: BorderRadius.circular(4)),
+                    const SizedBox(height: 16),
+                    Text('${(_progress * 100).toInt()}%',
+                        style: const TextStyle(fontSize: 14, color: Colors.white)),
+                    const SizedBox(height: 8),
+                    const Text('正在为您规划菜谱...', style: TextStyle(fontSize: 16, color: Colors.white)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
