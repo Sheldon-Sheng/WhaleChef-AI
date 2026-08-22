@@ -22,6 +22,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   late Animation<double> _fadeOut;
+  Timer? _navigateTimer;
 
   @override
   void initState() {
@@ -37,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     // 2s 后启动淡出动画，淡出结束后跳转
-    Timer(const Duration(seconds: 2), () {
+    _navigateTimer = Timer(const Duration(seconds: 2), () {
       _animController.forward().then((_) {
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -56,6 +57,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    _navigateTimer?.cancel();
     _animController.dispose();
     super.dispose();
   }

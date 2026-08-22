@@ -1,23 +1,21 @@
-// 冒烟测试：初始化 sqflite FFI 数据库并完整渲染 App
+// 冒烟测试：启动屏应完整渲染欢迎图片
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:deepfry/main.dart';
-import 'package:deepfry/data/local_db.dart';
 
 void main() {
-  setUpAll(() async {
-    sqfliteFfiInit();
-    // 使用内存数据库，避免测试写入磁盘
-    databaseFactory = databaseFactoryFfiNoIsolate;
-    await LocalDB().init();
-  });
-
-  testWidgets('App 完整渲染冒烟测试', (WidgetTester tester) async {
+  testWidgets('启动屏渲染欢迎图片冒烟测试', (WidgetTester tester) async {
     await tester.pumpWidget(const DeepFryApp());
-    await tester.pumpAndSettle();
-    // 根路由至少渲染出页面（欢迎页或主 shell）
-    expect(find.byType(DeepFryApp), findsOneWidget);
+
+    // 启动屏应展示 assets/images/welcome.png
+    final welcomeImage = find.byWidgetPredicate(
+      (w) =>
+          w is Image &&
+          w.image is AssetImage &&
+          (w.image as AssetImage).assetName == 'assets/images/welcome.png',
+    );
+    expect(welcomeImage, findsOneWidget);
   });
 }
