@@ -8,6 +8,7 @@ import '../models/recipe.dart';
 import '../widgets/ai_generating_overlay.dart';
 import 'recipe_detail_page.dart';
 import 'shopping_page.dart';
+import '../theme.dart';
 import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -256,7 +257,7 @@ class _HomePageState extends State<HomePage> {
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: ListTile(
-                leading: const Icon(Icons.shopping_cart, color: Colors.orange),
+                leading: const Icon(Icons.shopping_cart, color: kSeedBlue),
                 title: Text('食材采购清单（$unpurchasedCount 项待购）'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ShoppingPage())),
@@ -342,7 +343,7 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   children: [
-                    const Icon(Icons.shopping_cart, size: 16, color: Colors.orange),
+                    const Icon(Icons.shopping_cart, size: 16, color: kSeedBlue),
                     const SizedBox(width: 8),
                     Text(name, style: const TextStyle(fontSize: 14)),
                   ],
@@ -401,7 +402,7 @@ class _HomePageState extends State<HomePage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: Icon(recipe.mealType == '早餐' ? Icons.wb_sunny : Icons.restaurant, color: recipe.mealType == '早餐' ? Colors.orange : Colors.blue),
+        leading: Icon(recipe.mealType == '早餐' ? Icons.wb_sunny : Icons.restaurant, color: recipe.mealType == '早餐' ? const Color(0xFF90CAF9) : kSeedBlue),
         title: Text(recipe.name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

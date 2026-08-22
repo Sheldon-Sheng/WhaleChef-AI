@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../models/user_profile.dart';
 import 'onboarding_form.dart';
+import '../../theme.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
@@ -126,8 +127,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
             child: Image.asset('assets/images/welcome.png',
               height: 250, fit: BoxFit.cover,
               errorBuilder: (_, __, _) => Container(
-                height: 250, color: Colors.orange[100],
-                child: const Icon(Icons.restaurant, size: 80, color: Colors.orange),
+                height: 250, color: kSeedBlue.withValues(alpha: 0.12),
+                child: const Icon(Icons.restaurant, size: 80, color: kSeedBlue),
               ),
             ),
           ),
