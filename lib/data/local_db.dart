@@ -7,6 +7,7 @@ import '../models/kitchen_item.dart';
 import '../models/weekly_plan.dart';
 import '../models/recipe.dart';
 import '../models/shopping_item.dart';
+import '../utils/quantity.dart';
 
 class LocalDB {
   static final LocalDB _instance = LocalDB._internal();
@@ -16,10 +17,10 @@ class LocalDB {
   Database? _db;
   Database get db => _db!;
 
-  Future<void> init() async {
+  Future<void> init({String? path}) async {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
-      join(dbPath, 'deepfry.db'),
+      path ?? join(dbPath, 'deepfry.db'),
       version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
@@ -413,6 +414,83 @@ class LocalDB {
       // 删除采购项
       await txn.delete('shopping_items', where: 'id = ?', whereArgs: [itemId]);
     });
+  }
+
+  // 新增：更新采购清单某条的数量文本
+  Future<void> updateShoppingItemQuantity(int id, String quantity) async {
+    await db.update('shopping_items', {'quantity': quantity}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // 新增：完成烹饪扣除——冰箱优先，不足从采购扣，归零删除（仅食材）
+  Future<void> consumeForCooking(List<({String name, String quantity})> needs) async {
+    await db.transaction((txn) async {
+      for (final need in needs) {
+        await _consumeOne(txn, need.name, need.quantity);
+      }
+    });
+  }
+
+  Future<void> _consumeOne(DatabaseExecutor txn, String name, String needQty) async {
+    final need = parseQuantity(needQty);
+    final fridgeRows = await txn.query('ingredients', where: 'name = ?', whereArgs: [name], limit: 1);
+    final fridge = fridgeRows.isNotEmpty ? fridgeRows.first : null;
+    final fridgeAmount = (fridge?['amount'] as num?)?.toDouble() ?? 0;
+
+    if (need == null) {
+      // 非数值（适量）：用完当前可用整条
+      if (fridge != null && fridgeAmount > 0) {
+        await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
+      } else {
+        await _consumeShopAll(txn, name);
+      }
+      return;
+    }
+
+    if (fridge != null && fridgeAmount > 0) {
+      if (fridgeAmount >= need.amount) {
+        // 情况一：冰箱足够
+        final remaining = fridgeAmount - need.amount;
+        if (remaining == 0) {
+          await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
+        } else {
+          await txn.update('ingredients',
+            {'amount': remaining, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+            where: 'id = ?', whereArgs: [fridge['id']],
+          );
+        }
+      } else {
+        // 情况三：冰箱部分，不足部分从采购扣
+        await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
+        await _consumeShop(txn, name, need.amount - fridgeAmount);
+      }
+    } else {
+      // 情况二：冰箱没有
+      await _consumeShop(txn, name, need.amount);
+    }
+  }
+
+  Future<void> _consumeShop(DatabaseExecutor txn, String name, double amount) async {
+    final rows = await txn.query('shopping_items', where: 'name = ?', whereArgs: [name], limit: 1);
+    if (rows.isEmpty) return;
+    final item = rows.first;
+    final qty = parseQuantity(item['quantity'] as String? ?? '');
+    if (qty == null) {
+      await txn.delete('shopping_items', where: 'id = ?', whereArgs: [item['id']]);
+      return;
+    }
+    final remaining = qty.amount - amount;
+    if (remaining <= 0) {
+      await txn.delete('shopping_items', where: 'id = ?', whereArgs: [item['id']]);
+    } else {
+      await txn.update('shopping_items',
+        {'quantity': formatQuantity(remaining, qty.unit)},
+        where: 'id = ?', whereArgs: [item['id']],
+      );
+    }
+  }
+
+  Future<void> _consumeShopAll(DatabaseExecutor txn, String name) async {
+    await txn.delete('shopping_items', where: 'name = ?', whereArgs: [name]);
   }
 
   // === AI Config ===
