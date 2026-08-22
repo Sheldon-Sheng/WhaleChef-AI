@@ -20,14 +20,14 @@ class LocalDB {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       join(dbPath, 'deepfry.db'),
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 3) {
+    if (oldVersion < 2) {
       // 确保 amount/unit 列存在（老库可能缺少）
       final cols = await db.rawQuery('PRAGMA table_info(ingredients)');
       final colNames = cols.map((c) => c['name']).toSet();
@@ -54,6 +54,14 @@ class LocalDB {
         } else if (curAmount == 0) {
           await db.update('ingredients', {'unit': qty}, where: 'id = ?', whereArgs: [row['id']]);
         }
+      }
+    }
+    if (oldVersion < 3) {
+      // v2→v3: recipes 加 seasoning_list 列（仅 schema 演进）
+      final cols = await db.rawQuery('PRAGMA table_info(recipes)');
+      final colNames = cols.map((c) => c['name']).toSet();
+      if (!colNames.contains('seasoning_list')) {
+        await db.execute('ALTER TABLE recipes ADD COLUMN seasoning_list TEXT DEFAULT "[]"');
       }
     }
   }
@@ -114,6 +122,7 @@ class LocalDB {
         calories REAL,
         is_favorite INTEGER DEFAULT 0,
         ingredient_list TEXT DEFAULT '[]',
+        seasoning_list TEXT DEFAULT '[]',
         FOREIGN KEY (plan_id) REFERENCES weekly_plans(id) ON DELETE CASCADE
       )
     ''');
