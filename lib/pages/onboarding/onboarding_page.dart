@@ -123,7 +123,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: Image.asset('assets/images/welcome_1080x1920.png',
+            child: Image.asset('assets/images/welcome.png',
               height: 250, fit: BoxFit.cover,
               errorBuilder: (_, __, _) => Container(
                 height: 250, color: Colors.orange[100],
