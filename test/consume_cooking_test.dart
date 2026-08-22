@@ -33,7 +33,7 @@ void main() {
     await LocalDB().saveIngredient('番茄', 5, '个');
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', quantity: '2个')]);
 
-    await LocalDB().consumeForCooking([(name: '番茄', quantity: '3个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '3个')]);
 
     final ing = await LocalDB().getIngredientByName('番茄');
     expect(ing!.amount, 2); // 5 - 3
@@ -42,8 +42,9 @@ void main() {
   });
 
   test('情况一：扣除后为 0 则删除冰箱条目', () async {
+    final planId = await makePlan();
     await LocalDB().saveIngredient('番茄', 3, '个');
-    await LocalDB().consumeForCooking([(name: '番茄', quantity: '3个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '3个')]);
     expect(await LocalDB().getIngredientByName('番茄'), isNull);
   });
 
@@ -51,7 +52,7 @@ void main() {
     final planId = await makePlan();
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '土豆', quantity: '5个')]);
 
-    await LocalDB().consumeForCooking([(name: '土豆', quantity: '5个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '土豆', quantity: '5个')]);
 
     final shop = await LocalDB().getShoppingItems(planId);
     expect(shop.where((s) => s.name == '土豆'), isEmpty);
@@ -61,7 +62,7 @@ void main() {
     final planId = await makePlan();
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '土豆', quantity: '5个')]);
 
-    await LocalDB().consumeForCooking([(name: '土豆', quantity: '2个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '土豆', quantity: '2个')]);
 
     final shop = await LocalDB().getShoppingItems(planId);
     expect(shop.where((s) => s.name == '土豆').single.quantity, '3个');
@@ -72,7 +73,7 @@ void main() {
     await LocalDB().saveIngredient('番茄', 1, '个');
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', quantity: '4个')]);
 
-    await LocalDB().consumeForCooking([(name: '番茄', quantity: '3个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '3个')]);
 
     expect(await LocalDB().getIngredientByName('番茄'), isNull);
     final shop = await LocalDB().getShoppingItems(planId);
@@ -84,7 +85,7 @@ void main() {
     await LocalDB().saveIngredient('番茄', 2, '个');
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', quantity: '3个')]);
 
-    await LocalDB().consumeForCooking([(name: '番茄', quantity: '适量')]);
+    await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '适量')]);
 
     expect(await LocalDB().getIngredientByName('番茄'), isNull); // 冰箱整条用完
     final shop = await LocalDB().getShoppingItems(planId);

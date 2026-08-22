@@ -416,21 +416,16 @@ class LocalDB {
     });
   }
 
-  // 新增：更新采购清单某条的数量文本
-  Future<void> updateShoppingItemQuantity(int id, String quantity) async {
-    await db.update('shopping_items', {'quantity': quantity}, where: 'id = ?', whereArgs: [id]);
-  }
-
   // 新增：完成烹饪扣除——冰箱优先，不足从采购扣，归零删除（仅食材）
-  Future<void> consumeForCooking(List<({String name, String quantity})> needs) async {
+  Future<void> consumeForCooking(int planId, List<({String name, String quantity})> needs) async {
     await db.transaction((txn) async {
       for (final need in needs) {
-        await _consumeOne(txn, need.name, need.quantity);
+        await _consumeOne(txn, planId, need.name, need.quantity);
       }
     });
   }
 
-  Future<void> _consumeOne(DatabaseExecutor txn, String name, String needQty) async {
+  Future<void> _consumeOne(DatabaseExecutor txn, int planId, String name, String needQty) async {
     final need = parseQuantity(needQty);
     final fridgeRows = await txn.query('ingredients', where: 'name = ?', whereArgs: [name], limit: 1);
     final fridge = fridgeRows.isNotEmpty ? fridgeRows.first : null;
@@ -441,7 +436,7 @@ class LocalDB {
       if (fridge != null && fridgeAmount > 0) {
         await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
       } else {
-        await _consumeShopAll(txn, name);
+        await _consumeShopAll(txn, planId, name);
       }
       return;
     }
@@ -450,7 +445,7 @@ class LocalDB {
       if (fridgeAmount >= need.amount) {
         // 情况一：冰箱足够
         final remaining = fridgeAmount - need.amount;
-        if (remaining == 0) {
+        if (remaining <= 0) {
           await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
         } else {
           await txn.update('ingredients',
@@ -461,16 +456,16 @@ class LocalDB {
       } else {
         // 情况三：冰箱部分，不足部分从采购扣
         await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
-        await _consumeShop(txn, name, need.amount - fridgeAmount);
+        await _consumeShop(txn, planId, name, need.amount - fridgeAmount);
       }
     } else {
       // 情况二：冰箱没有
-      await _consumeShop(txn, name, need.amount);
+      await _consumeShop(txn, planId, name, need.amount);
     }
   }
 
-  Future<void> _consumeShop(DatabaseExecutor txn, String name, double amount) async {
-    final rows = await txn.query('shopping_items', where: 'name = ?', whereArgs: [name], limit: 1);
+  Future<void> _consumeShop(DatabaseExecutor txn, int planId, String name, double amount) async {
+    final rows = await txn.query('shopping_items', where: 'plan_id = ? AND name = ?', whereArgs: [planId, name], limit: 1);
     if (rows.isEmpty) return;
     final item = rows.first;
     final qty = parseQuantity(item['quantity'] as String? ?? '');
@@ -489,8 +484,8 @@ class LocalDB {
     }
   }
 
-  Future<void> _consumeShopAll(DatabaseExecutor txn, String name) async {
-    await txn.delete('shopping_items', where: 'name = ?', whereArgs: [name]);
+  Future<void> _consumeShopAll(DatabaseExecutor txn, int planId, String name) async {
+    await txn.delete('shopping_items', where: 'plan_id = ? AND name = ?', whereArgs: [planId, name]);
   }
 
   // === AI Config ===

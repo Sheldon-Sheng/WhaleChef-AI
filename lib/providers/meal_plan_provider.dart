@@ -119,6 +119,8 @@ class MealPlanProvider extends ChangeNotifier {
 
   /// 确认完成今日烹饪：汇总今日食材需求，从冰箱优先扣除，不足从采购清单扣除
   Future<void> completeTodayCooking(int dayIndex) async {
+    final plan = _activePlan;
+    if (plan == null) return;
     final recipes = getRecipesForDay(dayIndex);
     if (recipes.isEmpty) return;
 
@@ -127,6 +129,8 @@ class MealPlanProvider extends ChangeNotifier {
     final order = <String>[];
     for (final recipe in recipes) {
       for (final ing in recipe.ingredientItems) {
+        // 跳过空/仅空白数量（旧数据遗留），避免误判为「适量」清空整条冰箱库存
+        if (ing.quantity.trim().isEmpty) continue;
         final parsed = parseQuantity(ing.quantity);
         final cur = needMap[ing.name];
         if (parsed == null) {
@@ -148,7 +152,7 @@ class MealPlanProvider extends ChangeNotifier {
     }).toList();
     if (needs.isEmpty) return;
 
-    await _db.consumeForCooking(needs);
+    await _db.consumeForCooking(plan.id!, needs);
     await loadActivePlan();
   }
 

@@ -38,14 +38,11 @@ class Recipe {
     if (ingredientList.isEmpty) return const [];
     try {
       final list = jsonDecode(ingredientList) as List;
-      return list.map((e) {
-        if (e is Map) {
-          return RecipeIngredient(
-            name: (e['name'] ?? '').toString(),
-            quantity: (e['quantity'] ?? '').toString(),
-          );
-        }
-        return RecipeIngredient(name: e.toString());
+      return list.whereType<Map>().map((e) {
+        return RecipeIngredient(
+          name: (e['name'] ?? '').toString(),
+          quantity: (e['quantity'] ?? '').toString(),
+        );
       }).toList();
     } catch (_) {
       return const [];
@@ -56,7 +53,7 @@ class Recipe {
   List<String> get seasoningItems {
     if (seasoningList.isEmpty) return const [];
     try {
-      return (jsonDecode(seasoningList) as List).cast<String>();
+      return (jsonDecode(seasoningList) as List).map((e) => e.toString()).toList();
     } catch (_) {
       return const [];
     }
