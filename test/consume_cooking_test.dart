@@ -5,6 +5,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:deepfry/data/local_db.dart';
 import 'package:deepfry/models/weekly_plan.dart';
 import 'package:deepfry/models/shopping_item.dart';
+import 'package:deepfry/models/ingredient.dart';
 
 void main() {
   setUpAll(() async {
@@ -78,6 +79,19 @@ void main() {
     expect(await LocalDB().getIngredientByName('番茄'), isNull);
     final shop = await LocalDB().getShoppingItems(planId);
     expect(shop.where((s) => s.name == '番茄').single.quantity, '2个'); // 4 - (3-1)
+  });
+
+  test('兼容旧数据：冰箱 amount=0 但 unit 含数量文本，仍从冰箱扣除并规范化写回', () async {
+    final planId = await makePlan();
+    // 旧版 completeTodayCooking 遗留数据：amount=0、unit 存整段数量文本
+    await LocalDB().addIngredient(Ingredient(name: '牛肉', amount: 0, unit: '200g'));
+
+    await LocalDB().consumeForCooking(planId, [(name: '牛肉', quantity: '50g')]);
+
+    final ing = await LocalDB().getIngredientByName('牛肉');
+    expect(ing, isNotNull);
+    expect(ing!.amount, 150); // 200 - 50
+    expect(ing.unit, 'g'); // 写回时规范化
   });
 
   test('「适量」非数值：用完当前可用整条', () async {

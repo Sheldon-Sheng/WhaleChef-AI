@@ -429,11 +429,22 @@ class LocalDB {
     final need = parseQuantity(needQty);
     final fridgeRows = await txn.query('ingredients', where: 'name = ?', whereArgs: [name], limit: 1);
     final fridge = fridgeRows.isNotEmpty ? fridgeRows.first : null;
-    final fridgeAmount = (fridge?['amount'] as num?)?.toDouble() ?? 0;
+
+    // 兼容两种冰箱存储：新数据 amount+unit；旧数据 amount=0、unit 存整段数量文本（如 "200g"）
+    var fridgeAmount = (fridge?['amount'] as num?)?.toDouble() ?? 0;
+    var fridgeUnit = (fridge?['unit'] as String?) ?? '';
+    if (fridge != null && fridgeAmount <= 0 && fridgeUnit.isNotEmpty) {
+      final parsedUnit = parseQuantity(fridgeUnit);
+      if (parsedUnit != null) {
+        fridgeAmount = parsedUnit.amount;
+        fridgeUnit = parsedUnit.unit;
+      }
+    }
+    final hasFridge = fridge != null && fridgeAmount > 0;
 
     if (need == null) {
       // 非数值（适量）：用完当前可用整条
-      if (fridge != null && fridgeAmount > 0) {
+      if (hasFridge) {
         await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
       } else {
         await _consumeShopAll(txn, planId, name);
@@ -441,7 +452,7 @@ class LocalDB {
       return;
     }
 
-    if (fridge != null && fridgeAmount > 0) {
+    if (hasFridge) {
       if (fridgeAmount >= need.amount) {
         // 情况一：冰箱足够
         final remaining = fridgeAmount - need.amount;
@@ -449,7 +460,7 @@ class LocalDB {
           await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
         } else {
           await txn.update('ingredients',
-            {'amount': remaining, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+            {'amount': remaining, 'unit': fridgeUnit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
             where: 'id = ?', whereArgs: [fridge['id']],
           );
         }
