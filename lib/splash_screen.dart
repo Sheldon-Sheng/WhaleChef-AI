@@ -11,6 +11,7 @@ import 'pages/fridge_page.dart';
 import 'pages/kitchen_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/onboarding/onboarding_page.dart';
+import 'theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -74,7 +75,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             height: double.infinity,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => Container(
-              color: Colors.orange,
+              color: kSeedBlue,
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -108,11 +109,11 @@ class _MainApp extends StatelessWidget {
         title: 'DeepFry',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange, brightness: Brightness.light),
+          colorScheme: ColorScheme.fromSeed(seedColor: kSeedBlue, brightness: Brightness.light),
           useMaterial3: true,
         ),
         darkTheme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange, brightness: Brightness.dark),
+          colorScheme: ColorScheme.fromSeed(seedColor: kSeedBlue, brightness: Brightness.dark),
           useMaterial3: true,
         ),
         themeMode: ThemeMode.system,
