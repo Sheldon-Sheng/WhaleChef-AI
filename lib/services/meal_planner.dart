@@ -244,13 +244,19 @@ class MealPlannerService {
       for (final meal in meals) {
         final rawIngredients = meal['ingredients'] as List? ?? [];
         final ingredients = rawIngredients.map((e) {
-          if (e is Map) {
+          final name = e is Map ? (e['name'] ?? '').toString() : e.toString();
+          if (e is Map && (e['amount'] is num || e['quantity'] is String)) {
+            if (e['amount'] is num) {
+              return {'name': name, 'amount': (e['amount'] as num).toDouble(), 'unit': (e['unit'] ?? '').toString()};
+            }
+            final parsed = parseQuantity((e['quantity'] ?? '').toString());
             return {
-              'name': (e['name'] ?? '').toString(),
-              'quantity': (e['quantity'] ?? '').toString(),
+              'name': name,
+              'amount': parsed?.amount ?? 0,
+              'unit': parsed?.unit ?? ((e['quantity'] ?? '').toString().isEmpty ? '适量' : (e['quantity'] ?? '').toString()),
             };
           }
-          return {'name': e.toString(), 'quantity': ''};
+          return {'name': name, 'amount': 0, 'unit': '适量'};
         }).toList();
         final seasonings = (meal['seasonings'] as List?)?.map((e) => e.toString()).toList() ?? [];
         await _db.addRecipe(Recipe(

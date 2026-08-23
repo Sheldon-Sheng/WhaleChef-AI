@@ -7,7 +7,6 @@ import '../models/kitchen_item.dart';
 import '../models/weekly_plan.dart';
 import '../models/recipe.dart';
 import '../models/shopping_item.dart';
-import '../utils/quantity.dart';
 
 class LocalDB {
   static final LocalDB _instance = LocalDB._internal();
@@ -409,34 +408,22 @@ class LocalDB {
   }
 
   // 新增：完成烹饪扣除——冰箱优先，不足从采购扣，归零删除（仅食材）
-  Future<void> consumeForCooking(int planId, List<({String name, String quantity})> needs) async {
+  Future<void> consumeForCooking(int planId, List<({String name, double amount, String unit})> needs) async {
     await db.transaction((txn) async {
       for (final need in needs) {
-        await _consumeOne(txn, planId, need.name, need.quantity);
+        await _consumeOne(txn, planId, need.name, need.amount);
       }
     });
   }
 
-  Future<void> _consumeOne(DatabaseExecutor txn, int planId, String name, String needQty) async {
-    final need = parseQuantity(needQty);
+  Future<void> _consumeOne(DatabaseExecutor txn, int planId, String name, double needAmount) async {
     final fridgeRows = await txn.query('ingredients', where: 'name = ?', whereArgs: [name], limit: 1);
     final fridge = fridgeRows.isNotEmpty ? fridgeRows.first : null;
+    final fridgeAmount = (fridge?['amount'] as num?)?.toDouble() ?? 0;
 
-    // 兼容两种冰箱存储：新数据 amount+unit；旧数据 amount=0、unit 存整段数量文本（如 "200g"）
-    var fridgeAmount = (fridge?['amount'] as num?)?.toDouble() ?? 0;
-    var fridgeUnit = (fridge?['unit'] as String?) ?? '';
-    if (fridge != null && fridgeAmount <= 0 && fridgeUnit.isNotEmpty) {
-      final parsedUnit = parseQuantity(fridgeUnit);
-      if (parsedUnit != null) {
-        fridgeAmount = parsedUnit.amount;
-        fridgeUnit = parsedUnit.unit;
-      }
-    }
-    final hasFridge = fridge != null && fridgeAmount > 0;
-
-    if (need == null) {
-      // 非数值（适量）：用完当前可用整条
-      if (hasFridge) {
+    if (needAmount <= 0) {
+      // 适量：用完当前可用整条
+      if (fridge != null && fridgeAmount > 0) {
         await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
       } else {
         await _consumeShopAll(txn, planId, name);
@@ -444,26 +431,23 @@ class LocalDB {
       return;
     }
 
-    if (hasFridge) {
-      if (fridgeAmount >= need.amount) {
-        // 情况一：冰箱足够
-        final remaining = fridgeAmount - need.amount;
+    if (fridge != null && fridgeAmount > 0) {
+      if (fridgeAmount >= needAmount) {
+        final remaining = fridgeAmount - needAmount;
         if (remaining <= 0) {
           await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
         } else {
           await txn.update('ingredients',
-            {'amount': remaining, 'unit': fridgeUnit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+            {'amount': remaining, 'unit': (fridge['unit'] as String? ?? ''), 'updated_at': DateTime.now().millisecondsSinceEpoch},
             where: 'id = ?', whereArgs: [fridge['id']],
           );
         }
       } else {
-        // 情况三：冰箱部分，不足部分从采购扣
         await txn.delete('ingredients', where: 'id = ?', whereArgs: [fridge['id']]);
-        await _consumeShop(txn, planId, name, need.amount - fridgeAmount);
+        await _consumeShop(txn, planId, name, needAmount - fridgeAmount);
       }
     } else {
-      // 情况二：冰箱没有
-      await _consumeShop(txn, planId, name, need.amount);
+      await _consumeShop(txn, planId, name, needAmount);
     }
   }
 

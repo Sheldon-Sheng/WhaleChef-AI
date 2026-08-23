@@ -100,7 +100,7 @@ class RecipeDetailPage extends StatelessWidget {
                         const Icon(Icons.circle, size: 6, color: kSeedBlue),
                         const SizedBox(width: 8),
                         Text(
-                          ing.quantity.isEmpty ? ing.name : '${ing.name} ${ing.quantity}',
+                          '${ing.name} ${ing.displayQuantity}',
                           style: const TextStyle(fontSize: 14),
                         ),
                       ],

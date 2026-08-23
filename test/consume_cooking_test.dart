@@ -5,7 +5,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:deepfry/data/local_db.dart';
 import 'package:deepfry/models/weekly_plan.dart';
 import 'package:deepfry/models/shopping_item.dart';
-import 'package:deepfry/models/ingredient.dart';
 
 void main() {
   setUpAll(() async {
@@ -34,7 +33,7 @@ void main() {
     await LocalDB().saveIngredient('番茄', 5, '个');
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', amount: 2, unit: '个')]);
 
-    await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '3个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '番茄', amount: 3, unit: '个')]);
 
     final ing = await LocalDB().getIngredientByName('番茄');
     expect(ing!.amount, 2); // 5 - 3
@@ -45,7 +44,7 @@ void main() {
   test('情况一：扣除后为 0 则删除冰箱条目', () async {
     final planId = await makePlan();
     await LocalDB().saveIngredient('番茄', 3, '个');
-    await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '3个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '番茄', amount: 3, unit: '个')]);
     expect(await LocalDB().getIngredientByName('番茄'), isNull);
   });
 
@@ -53,7 +52,7 @@ void main() {
     final planId = await makePlan();
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '土豆', amount: 5, unit: '个')]);
 
-    await LocalDB().consumeForCooking(planId, [(name: '土豆', quantity: '5个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '土豆', amount: 5, unit: '个')]);
 
     final shop = await LocalDB().getShoppingItems(planId);
     expect(shop.where((s) => s.name == '土豆'), isEmpty);
@@ -63,7 +62,7 @@ void main() {
     final planId = await makePlan();
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '土豆', amount: 5, unit: '个')]);
 
-    await LocalDB().consumeForCooking(planId, [(name: '土豆', quantity: '2个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '土豆', amount: 2, unit: '个')]);
 
     final shop = await LocalDB().getShoppingItems(planId);
     expect(shop.where((s) => s.name == '土豆').single.displayQuantity, '3个');
@@ -74,24 +73,11 @@ void main() {
     await LocalDB().saveIngredient('番茄', 1, '个');
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', amount: 4, unit: '个')]);
 
-    await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '3个')]);
+    await LocalDB().consumeForCooking(planId, [(name: '番茄', amount: 3, unit: '个')]);
 
     expect(await LocalDB().getIngredientByName('番茄'), isNull);
     final shop = await LocalDB().getShoppingItems(planId);
     expect(shop.where((s) => s.name == '番茄').single.displayQuantity, '2个'); // 4 - (3-1)
-  });
-
-  test('兼容旧数据：冰箱 amount=0 但 unit 含数量文本，仍从冰箱扣除并规范化写回', () async {
-    final planId = await makePlan();
-    // 旧版 completeTodayCooking 遗留数据：amount=0、unit 存整段数量文本
-    await LocalDB().addIngredient(Ingredient(name: '牛肉', amount: 0, unit: '200g'));
-
-    await LocalDB().consumeForCooking(planId, [(name: '牛肉', quantity: '50g')]);
-
-    final ing = await LocalDB().getIngredientByName('牛肉');
-    expect(ing, isNotNull);
-    expect(ing!.amount, 150); // 200 - 50
-    expect(ing.unit, 'g'); // 写回时规范化
   });
 
   test('「适量」非数值：用完当前可用整条', () async {
@@ -99,7 +85,7 @@ void main() {
     await LocalDB().saveIngredient('番茄', 2, '个');
     await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', amount: 3, unit: '个')]);
 
-    await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '适量')]);
+    await LocalDB().consumeForCooking(planId, [(name: '番茄', amount: 0, unit: '适量')]);
 
     expect(await LocalDB().getIngredientByName('番茄'), isNull); // 冰箱整条用完
     final shop = await LocalDB().getShoppingItems(planId);

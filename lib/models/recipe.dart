@@ -1,11 +1,16 @@
 // lib/models/recipe.dart
 import 'dart:convert';
 
-/// 菜谱中的一种食材（带数量）
+/// 菜谱中的一种食材（统一结构化数量；amount=0 为适量）
 class RecipeIngredient {
   final String name;
-  final String quantity; // 如 "2个"、"500g"、"适量"
-  const RecipeIngredient({required this.name, this.quantity = ''});
+  final double amount;
+  final String unit;
+  const RecipeIngredient({required this.name, this.amount = 0, this.unit = ''});
+
+  /// 展示文本
+  String get displayQuantity =>
+      amount > 0 ? (amount == amount.roundToDouble() ? '${amount.toInt()}$unit' : '$amount$unit') : (unit.isEmpty ? '适量' : unit);
 }
 
 class Recipe {
@@ -17,7 +22,7 @@ class Recipe {
   final String description;
   final double? calories;
   final bool isFavorite;
-  final String ingredientList; // 食材 JSON: [{"name","quantity"}]
+  final String ingredientList; // 食材 JSON: [{"name","amount","unit"}]
   final String seasoningList;  // 调味品 JSON: ["盐"]
 
   Recipe({
@@ -33,7 +38,7 @@ class Recipe {
     this.seasoningList = '[]',
   });
 
-  /// 解析食材（仅新格式；解析失败返回空）
+  /// 解析食材（仅新格式 amount/unit；解析失败返回空）
   List<RecipeIngredient> get ingredientItems {
     if (ingredientList.isEmpty) return const [];
     try {
@@ -41,7 +46,8 @@ class Recipe {
       return list.whereType<Map>().map((e) {
         return RecipeIngredient(
           name: (e['name'] ?? '').toString(),
-          quantity: (e['quantity'] ?? '').toString(),
+          amount: (e['amount'] as num?)?.toDouble() ?? 0,
+          unit: (e['unit'] ?? '').toString(),
         );
       }).toList();
     } catch (_) {

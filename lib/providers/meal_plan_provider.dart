@@ -124,32 +124,7 @@ class MealPlanProvider extends ChangeNotifier {
     final recipes = getRecipesForDay(dayIndex);
     if (recipes.isEmpty) return;
 
-    // 汇总同名食材数量（数值相加、沿用首个单位；出现非数值则整体按「适量」）
-    final needMap = <String, ({double amount, String unit, bool numeric})>{};
-    final order = <String>[];
-    for (final recipe in recipes) {
-      for (final ing in recipe.ingredientItems) {
-        // 跳过空/仅空白数量（旧数据遗留），避免误判为「适量」清空整条冰箱库存
-        if (ing.quantity.trim().isEmpty) continue;
-        final parsed = parseQuantity(ing.quantity);
-        final cur = needMap[ing.name];
-        if (parsed == null) {
-          if (!needMap.containsKey(ing.name)) order.add(ing.name);
-          needMap[ing.name] = (amount: 0, unit: ing.quantity, numeric: false);
-        } else if (cur == null) {
-          order.add(ing.name);
-          needMap[ing.name] = (amount: parsed.amount, unit: parsed.unit, numeric: true);
-        } else if (cur.numeric) {
-          needMap[ing.name] = (amount: cur.amount + parsed.amount, unit: cur.unit, numeric: true);
-        }
-        // 已非数值则保持非数值
-      }
-    }
-
-    final needs = order.map((name) {
-      final n = needMap[name]!;
-      return (name: name, quantity: n.numeric ? formatQuantity(n.amount, n.unit) : n.unit);
-    }).toList();
+    final needs = aggregateRecipeIngredients(recipes);
     if (needs.isEmpty) return;
 
     await _db.consumeForCooking(plan.id!, needs);

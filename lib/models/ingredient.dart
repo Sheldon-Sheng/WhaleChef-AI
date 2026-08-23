@@ -7,10 +7,10 @@ class Ingredient {
   final String? category;
   final int updatedAt;
 
-  /// 兼容旧版：合并显示用
-  String get quantity => amount == amount.roundToDouble()
-      ? '${amount.toInt()}$unit'
-      : '$amount$unit';
+  /// 展示数量；amount 为 0 视为「适量」
+  String get quantity => amount > 0
+      ? (amount == amount.roundToDouble() ? '${amount.toInt()}$unit' : '$amount$unit')
+      : (unit.isEmpty ? '适量' : unit);
 
   Ingredient({
     this.id,
