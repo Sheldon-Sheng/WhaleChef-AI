@@ -32,7 +32,7 @@ void main() {
   test('情况一：冰箱足够则从冰箱扣除，归零删除', () async {
     final planId = await makePlan();
     await LocalDB().saveIngredient('番茄', 5, '个');
-    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', quantity: '2个')]);
+    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', amount: 2, unit: '个')]);
 
     await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '3个')]);
 
@@ -51,7 +51,7 @@ void main() {
 
   test('情况二：冰箱没有则从采购清单扣除，归零删除', () async {
     final planId = await makePlan();
-    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '土豆', quantity: '5个')]);
+    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '土豆', amount: 5, unit: '个')]);
 
     await LocalDB().consumeForCooking(planId, [(name: '土豆', quantity: '5个')]);
 
@@ -61,24 +61,24 @@ void main() {
 
   test('情况二：采购清单扣减后剩余则写回数量', () async {
     final planId = await makePlan();
-    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '土豆', quantity: '5个')]);
+    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '土豆', amount: 5, unit: '个')]);
 
     await LocalDB().consumeForCooking(planId, [(name: '土豆', quantity: '2个')]);
 
     final shop = await LocalDB().getShoppingItems(planId);
-    expect(shop.where((s) => s.name == '土豆').single.quantity, '3个');
+    expect(shop.where((s) => s.name == '土豆').single.displayQuantity, '3个');
   });
 
   test('情况三：冰箱部分则扣光冰箱，不足部分从采购扣除', () async {
     final planId = await makePlan();
     await LocalDB().saveIngredient('番茄', 1, '个');
-    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', quantity: '4个')]);
+    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', amount: 4, unit: '个')]);
 
     await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '3个')]);
 
     expect(await LocalDB().getIngredientByName('番茄'), isNull);
     final shop = await LocalDB().getShoppingItems(planId);
-    expect(shop.where((s) => s.name == '番茄').single.quantity, '2个'); // 4 - (3-1)
+    expect(shop.where((s) => s.name == '番茄').single.displayQuantity, '2个'); // 4 - (3-1)
   });
 
   test('兼容旧数据：冰箱 amount=0 但 unit 含数量文本，仍从冰箱扣除并规范化写回', () async {
@@ -97,7 +97,7 @@ void main() {
   test('「适量」非数值：用完当前可用整条', () async {
     final planId = await makePlan();
     await LocalDB().saveIngredient('番茄', 2, '个');
-    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', quantity: '3个')]);
+    await LocalDB().addShoppingItems([ShoppingItem(planId: planId, name: '番茄', amount: 3, unit: '个')]);
 
     await LocalDB().consumeForCooking(planId, [(name: '番茄', quantity: '适量')]);
 

@@ -95,13 +95,13 @@ class MealPlanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> markPurchased(int itemId, String name, String quantity) async {
-    await _db.markPurchased(itemId, name, quantity);
+  Future<void> markPurchased(int itemId, String name, double amount, String unit) async {
+    await _db.markPurchased(itemId, name, amount, unit);
     await loadActivePlan();
   }
 
   /// 批量确认购买（单次事务，防止循环中列表变化）
-  Future<void> batchMarkPurchased(List<({int itemId, String name, String quantity})> items) async {
+  Future<void> batchMarkPurchased(List<({int itemId, String name, double amount, String unit})> items) async {
     if (items.isEmpty) return;
     await _db.batchMarkPurchased(items);
     await loadActivePlan();

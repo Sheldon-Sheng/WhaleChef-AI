@@ -8,6 +8,8 @@
   return (amount: amount, unit: match.group(2)?.trim() ?? '');
 }
 
-/// 数值数量格式化为文本，如 3.0,"个" → "3个"
+/// 数值数量格式化为文本；amount<=0 视为「适量」
 String formatQuantity(double amount, String unit) =>
-    amount == amount.roundToDouble() ? '${amount.toInt()}$unit' : '$amount$unit';
+    amount > 0
+        ? (amount == amount.roundToDouble() ? '${amount.toInt()}$unit' : '$amount$unit')
+        : (unit.isEmpty ? '适量' : unit);

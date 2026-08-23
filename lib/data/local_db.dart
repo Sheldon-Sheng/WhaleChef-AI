@@ -21,7 +21,7 @@ class LocalDB {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       path ?? join(dbPath, 'deepfry.db'),
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -64,6 +64,24 @@ class LocalDB {
       if (!colNames.contains('seasoning_list')) {
         await db.execute('ALTER TABLE recipes ADD COLUMN seasoning_list TEXT DEFAULT "[]"');
       }
+    }
+    if (oldVersion < 4) {
+      // v4: 统一结构化数量（amount+unit），直接清空旧数据
+      await db.execute('DROP TABLE IF EXISTS shopping_items');
+      await db.execute('''CREATE TABLE shopping_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL DEFAULT 0,
+        unit TEXT NOT NULL DEFAULT '',
+        source TEXT DEFAULT 'plan',
+        purchased INTEGER DEFAULT 0,
+        FOREIGN KEY (plan_id) REFERENCES weekly_plans(id) ON DELETE CASCADE
+      )''');
+      await db.delete('ingredients');
+      await db.delete('shopping_items');
+      await db.delete('recipes');
+      await db.delete('weekly_plans');
     }
   }
 
@@ -132,7 +150,8 @@ class LocalDB {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         plan_id INTEGER NOT NULL,
         name TEXT NOT NULL,
-        quantity TEXT NOT NULL,
+        amount REAL NOT NULL DEFAULT 0,
+        unit TEXT NOT NULL DEFAULT '',
         source TEXT DEFAULT 'plan',
         purchased INTEGER DEFAULT 0,
         FOREIGN KEY (plan_id) REFERENCES weekly_plans(id) ON DELETE CASCADE
@@ -359,61 +378,34 @@ class LocalDB {
     }
   }
 
-  Future<void> batchMarkPurchased(List<({int itemId, String name, String quantity})> items) async {
+  Future<void> markPurchased(int itemId, String name, double amount, String unit) async {
+    await db.transaction((txn) => _purchaseOne(txn, itemId, name, amount, unit));
+  }
+
+  Future<void> batchMarkPurchased(List<({int itemId, String name, double amount, String unit})> items) async {
+    if (items.isEmpty) return;
     await db.transaction((txn) async {
       for (final item in items) {
-        final match = RegExp(r'^([\d.]+)\s*(.*)$').firstMatch(item.quantity.trim());
-        final amount = (match != null) ? (double.tryParse(match.group(1)!) ?? 0) : 0.0;
-        final unit = (match != null) ? (match.group(2)?.trim() ?? '') : item.quantity;
-
-        // 更新冰箱库存
-        final existing = await txn.query('ingredients', where: 'name = ?', whereArgs: [item.name], limit: 1);
-        if (existing.isNotEmpty) {
-          await txn.update('ingredients',
-            {'amount': amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
-            where: 'name = ?', whereArgs: [item.name],
-          );
-        } else {
-          await txn.insert('ingredients', {
-            'name': item.name,
-            'amount': amount,
-            'unit': unit,
-            'updated_at': DateTime.now().millisecondsSinceEpoch,
-          });
-        }
-        // 删除采购项
-        await txn.delete('shopping_items', where: 'id = ?', whereArgs: [item.itemId]);
+        await _purchaseOne(txn, item.itemId, item.name, item.amount, item.unit);
       }
     });
   }
 
-  Future<void> markPurchased(int itemId, String name, String quantity) async {
-    await db.transaction((txn) async {
-      // 解析数量字符串
-      final match = RegExp(r'^([\d.]+)\s*(.*)$').firstMatch(quantity.trim());
-      final amount = (match != null) ? (double.tryParse(match.group(1)!) ?? 0) : 0.0;
-      final unit = (match != null) ? (match.group(2)?.trim() ?? '') : quantity;
-
-      // 更新冰箱库存
-      final existing = await txn.query('ingredients', where: 'name = ?', whereArgs: [name], limit: 1);
-      if (existing.isNotEmpty) {
-        // 已存在，更新数量
-        await txn.update('ingredients',
-          {'amount': amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
-          where: 'name = ?', whereArgs: [name],
-        );
-      } else {
-        // 不存在，新增
-        await txn.insert('ingredients', {
-          'name': name,
-          'amount': amount,
-          'unit': unit,
-          'updated_at': DateTime.now().millisecondsSinceEpoch,
-        });
-      }
-      // 删除采购项
-      await txn.delete('shopping_items', where: 'id = ?', whereArgs: [itemId]);
-    });
+  /// 采购项移入冰箱并删除采购条目（在调用方的事务 txn 内执行）
+  Future<void> _purchaseOne(DatabaseExecutor txn, int itemId, String name, double amount, String unit) async {
+    final existing = await txn.query('ingredients', where: 'name = ?', whereArgs: [name], limit: 1);
+    if (existing.isNotEmpty) {
+      await txn.update('ingredients',
+        {'amount': amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+        where: 'name = ?', whereArgs: [name],
+      );
+    } else {
+      await txn.insert('ingredients', {
+        'name': name, 'amount': amount, 'unit': unit,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      });
+    }
+    await txn.delete('shopping_items', where: 'id = ?', whereArgs: [itemId]);
   }
 
   // 新增：完成烹饪扣除——冰箱优先，不足从采购扣，归零删除（仅食材）
@@ -479,17 +471,19 @@ class LocalDB {
     final rows = await txn.query('shopping_items', where: 'plan_id = ? AND name = ?', whereArgs: [planId, name], limit: 1);
     if (rows.isEmpty) return;
     final item = rows.first;
-    final qty = parseQuantity(item['quantity'] as String? ?? '');
-    if (qty == null) {
+    final itemAmount = (item['amount'] as num?)?.toDouble() ?? 0;
+    final itemUnit = item['unit'] as String? ?? '';
+    if (itemAmount <= 0) {
+      // 适量：用完当前整条
       await txn.delete('shopping_items', where: 'id = ?', whereArgs: [item['id']]);
       return;
     }
-    final remaining = qty.amount - amount;
+    final remaining = itemAmount - amount;
     if (remaining <= 0) {
       await txn.delete('shopping_items', where: 'id = ?', whereArgs: [item['id']]);
     } else {
       await txn.update('shopping_items',
-        {'quantity': formatQuantity(remaining, qty.unit)},
+        {'amount': remaining, 'unit': itemUnit},
         where: 'id = ?', whereArgs: [item['id']],
       );
     }

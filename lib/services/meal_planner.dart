@@ -7,6 +7,7 @@ import '../models/weekly_plan.dart';
 import '../models/shopping_item.dart';
 import 'prompt_builder.dart';
 import 'deepseek_api.dart';
+import '../utils/quantity.dart';
 
 class MealPlannerService {
   final LocalDB _db = LocalDB();
@@ -190,7 +191,8 @@ class MealPlannerService {
       items.add(ShoppingItem(
         planId: activePlan.id!,
         name: name,
-        quantity: '适量',
+        amount: 0,
+        unit: '适量',
         source: 'plan',
       ));
     }
@@ -266,12 +268,17 @@ class MealPlannerService {
 
     // 保存采购清单
     final shoppingList = weekPlan['shopping_list'] as List? ?? [];
-    final shoppingItems = shoppingList.map((item) => ShoppingItem(
-      planId: planId,
-      name: item['name'] as String? ?? '',
-      quantity: item['quantity'] as String? ?? '',
-      source: 'plan',
-    )).toList();
+    final shoppingItems = shoppingList.map((item) {
+      final qty = item['quantity'] as String? ?? '';
+      final parsed = parseQuantity(qty);
+      return ShoppingItem(
+        planId: planId,
+        name: item['name'] as String? ?? '',
+        amount: parsed?.amount ?? 0,
+        unit: parsed?.unit ?? qty,
+        source: 'plan',
+      );
+    }).toList();
     if (shoppingItems.isNotEmpty) {
       await _db.addShoppingItems(shoppingItems);
     }
@@ -290,7 +297,8 @@ class MealPlannerService {
         await _db.addShoppingItem(ShoppingItem(
           planId: activePlan.id!,
           name: seasoning.name,
-          quantity: '1份',
+          amount: 1,
+          unit: '份',
           source: 'seasoning',
         ));
       }
