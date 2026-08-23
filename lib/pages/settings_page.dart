@@ -6,6 +6,7 @@ import '../providers/user_provider.dart';
 import '../providers/meal_plan_provider.dart';
 import '../providers/kitchen_provider.dart';
 import '../data/local_db.dart';
+import '../theme.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -20,6 +21,26 @@ class _SettingsPageState extends State<SettingsPage> {
   final _modelController = TextEditingController();
   final _baseUrlController = TextEditingController();
   bool _apiKeyVisible = false;
+
+  /// 常见 OpenAI 兼容 AI 服务的 Base URL 预设
+  static const _aiBaseUrlPresets = <String, String>{
+    'DeepSeek': 'https://api.deepseek.com/v1',
+    'OpenAI': 'https://api.openai.com/v1',
+    'Moonshot': 'https://api.moonshot.cn/v1',
+    '通义千问': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    '智谱 GLM': 'https://open.bigmodel.cn/api/paas/v4',
+    'SiliconFlow': 'https://api.siliconflow.cn/v1',
+  };
+  static const _customUrlKey = '__custom__';
+
+  /// 当前 base URL 对应的下拉项 key：匹配预设返回其名，否则返回「自定义」
+  String _currentUrlPresetKey() {
+    final url = _baseUrlController.text.trim();
+    for (final e in _aiBaseUrlPresets.entries) {
+      if (e.value == url) return e.key;
+    }
+    return _customUrlKey;
+  }
 
   @override
   void initState() {
@@ -183,11 +204,9 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            TextField(
-                              controller: _baseUrlController,
+                            InputDecorator(
                               decoration: InputDecoration(
-                                labelText: 'API 地址 (Base URL)',
-                                helperText: '填基础地址，自动补 /chat/completions',
+                                labelText: 'AI 服务商 (Base URL)',
                                 suffixIcon: IconButton(
                                   icon: const Icon(Icons.info_outline),
                                   tooltip: '获取 API Key 教程',
@@ -200,13 +219,54 @@ class _SettingsPageState extends State<SettingsPage> {
                                   },
                                 ),
                               ),
-                              keyboardType: TextInputType.url,
+                              child: DropdownButton<String>(
+                                value: _currentUrlPresetKey(),
+                                isExpanded: true,
+                                isDense: true,
+                                items: [
+                                  ..._aiBaseUrlPresets.entries.map(
+                                    (e) => DropdownMenuItem(
+                                      value: e.key,
+                                      child: Text(e.key),
+                                    ),
+                                  ),
+                                  const DropdownMenuItem(
+                                    value: _customUrlKey,
+                                    child: Text('自定义 URL…'),
+                                  ),
+                                ],
+                                onChanged: (v) => setState(() {
+                                  if (v == null) return;
+                                  if (v == _customUrlKey) {
+                                    _baseUrlController.clear();
+                                  } else {
+                                    _baseUrlController.text =
+                                        _aiBaseUrlPresets[v]!;
+                                  }
+                                }),
+                              ),
                             ),
+                            if (_currentUrlPresetKey() == _customUrlKey)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: TextField(
+                                  controller: _baseUrlController,
+                                  decoration: const InputDecoration(
+                                    labelText: '自定义 Base URL',
+                                    helperText: '自动补 /chat/completions',
+                                  ),
+                                  keyboardType: TextInputType.url,
+                                ),
+                              ),
                             const SizedBox(height: 16),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: _saveConfig,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: kSeedBlue,
+                                  foregroundColor: Colors.white,
+                                ),
                                 child: const Text('保存配置'),
                               ),
                             ),
