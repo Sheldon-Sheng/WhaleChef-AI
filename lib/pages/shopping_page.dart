@@ -43,16 +43,8 @@ class _ShoppingPageState extends State<ShoppingPage> {
     if (selected.isEmpty) return;
 
     try {
-      // 循环内不再正则解析：
-      for (final s in selected) {
-        final existing = await db.getIngredientByName(s.name);
-        if (existing != null) {
-          await db.addToIngredientStock(existing.id!, s.amount, s.unit);
-        } else {
-          await db.saveIngredient(s.name, s.amount, s.unit);
-        }
-        await db.deleteShoppingItem(s.itemId);
-      }
+      // 单事务：采购项移入冰箱（同名累加）并删除采购条目
+      await db.batchMarkPurchased(selected);
 
       _selectedIds.clear();
       await provider.loadActivePlan();

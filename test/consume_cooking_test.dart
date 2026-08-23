@@ -5,6 +5,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:deepfry/data/local_db.dart';
 import 'package:deepfry/models/weekly_plan.dart';
 import 'package:deepfry/models/shopping_item.dart';
+import 'package:deepfry/utils/quantity.dart';
 
 void main() {
   setUpAll(() async {
@@ -92,14 +93,38 @@ void main() {
     expect(shop.where((s) => s.name == '番茄'), hasLength(1)); // 采购不动
   });
 
-  test('采购差量：冰箱够则不买，不够则买差量', () async {
+  test('情况三：冰箱部分则扣光冰箱，不足从采购扣（无采购项时静默不报错）', () async {
     final planId = await makePlan();
     // 冰箱已有牛肉 300g
     await LocalDB().saveIngredient('牛肉', 300, 'g');
     // 需求：牛肉 500g
     final needs = [(name: '牛肉', amount: 500.0, unit: 'g')];
-    await LocalDB().consumeForCooking(planId, needs); // 只验证扣减——差量生成在 _savePlan，逻辑见下方
+    // 只验证扣减（不足部分无采购项可扣时静默）——差量生成在 _savePlan
+    await LocalDB().consumeForCooking(planId, needs);
     final ing = await LocalDB().getIngredientByName('牛肉');
     expect(ing, isNull); // 300 < 500 不够，扣光冰箱
+  });
+
+  group('computeShoppingShortfall', () {
+    test('冰箱同单位且够 → 差量 0（不买）', () {
+      expect(computeShoppingShortfall(500, 'g', 600, 'g'), 0);
+    });
+
+    test('冰箱同单位但不够 → 差量 = 需求 − 存量', () {
+      expect(computeShoppingShortfall(500, 'g', 300, 'g'), 200);
+    });
+
+    test('冰箱单位不一致 → 不扣减，全量', () {
+      expect(computeShoppingShortfall(500, 'g', 2, '个'), 500);
+    });
+
+    test('无冰箱 → 全量', () {
+      expect(computeShoppingShortfall(500, 'g', 0, ''), 500);
+    });
+
+    test('需求适量（needAmount<=0）→ 原样返回', () {
+      expect(computeShoppingShortfall(0, '适量', 100, '个'), 0);
+      expect(computeShoppingShortfall(0, '适量', 0, ''), 0);
+    });
   });
 }

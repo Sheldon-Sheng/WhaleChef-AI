@@ -16,6 +16,14 @@ String formatQuantity(double amount, String unit) =>
         ? (amount == amount.roundToDouble() ? '${amount.toInt()}$unit' : '$amount$unit')
         : (unit.isEmpty ? '适量' : unit);
 
+/// 计算采购差量：仅当冰箱单位与需求单位一致时才扣减存量；冰箱足够→0；否则全量
+double computeShoppingShortfall(double needAmount, String needUnit, double fridgeAmount, String fridgeUnit) {
+  if (needAmount <= 0) return needAmount;
+  if (fridgeAmount > 0 && fridgeUnit == needUnit && fridgeAmount >= needAmount) return 0;
+  if (fridgeAmount > 0 && fridgeUnit == needUnit) return needAmount - fridgeAmount;
+  return needAmount; // 无冰箱或单位不一致 → 全量
+}
+
 /// 聚合多个菜谱的食材需求：同名 amount 相加（沿用首个 unit）；任一为适量则该名整体适量
 List<({String name, double amount, String unit})> aggregateRecipeIngredients(List<Recipe> recipes) {
   final map = <String, ({double amount, String unit, bool numeric})>{};

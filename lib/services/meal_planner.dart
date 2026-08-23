@@ -246,15 +246,16 @@ class MealPlannerService {
     for (final need in needs) {
       final fridge = await _db.getIngredientByName(need.name);
       final fridgeAmount = fridge?.amount ?? 0;
+      final fridgeUnit = fridge?.unit ?? '';
       if (need.amount <= 0) {
         // 需求适量：原样加入采购
         shoppingItems.add(ShoppingItem(planId: planId, name: need.name, amount: 0, unit: need.unit, source: 'plan'));
-      } else if (fridgeAmount > 0 && fridgeAmount >= need.amount) {
-        // 情况一：冰箱够，不买
+      } else if (fridgeAmount > 0 && fridgeUnit == need.unit && fridgeAmount >= need.amount) {
+        // 情况一：冰箱同单位且够，不买
         continue;
       } else {
-        // 情况二：买差量（冰箱无 → 全量）
-        final shortfall = need.amount - (fridgeAmount > 0 ? fridgeAmount : 0);
+        // 情况二：买差量（单位一致且不足 → 差量；无冰箱或单位不一致 → 全量）
+        final shortfall = computeShoppingShortfall(need.amount, need.unit, fridgeAmount, fridgeUnit);
         shoppingItems.add(ShoppingItem(planId: planId, name: need.name, amount: shortfall, unit: need.unit, source: 'plan'));
       }
     }

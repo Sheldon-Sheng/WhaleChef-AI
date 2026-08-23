@@ -394,34 +394,32 @@ class LocalDB {
     }
   }
 
-  Future<void> markPurchased(int itemId, String name, double amount, String unit) async {
-    await db.transaction((txn) => _purchaseOne(txn, itemId, name, amount, unit));
-  }
-
+  /// 批量确认购买：单事务内将采购项移入冰箱并删除采购条目
+  /// - 同名已存在：amount>0 时累加存量（单位取 item.unit）；amount<=0（适量）不累加，保持原行
+  /// - 不存在：插入 {name, amount, unit}
   Future<void> batchMarkPurchased(List<({int itemId, String name, double amount, String unit})> items) async {
     if (items.isEmpty) return;
     await db.transaction((txn) async {
       for (final item in items) {
-        await _purchaseOne(txn, item.itemId, item.name, item.amount, item.unit);
+        final existing = await txn.query('ingredients', where: 'name = ?', whereArgs: [item.name], limit: 1);
+        if (existing.isNotEmpty) {
+          if (item.amount > 0) {
+            final cur = (existing.first['amount'] as num?)?.toDouble() ?? 0;
+            await txn.update('ingredients',
+              {'amount': cur + item.amount, 'unit': item.unit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+              where: 'name = ?', whereArgs: [item.name],
+            );
+          }
+          // amount<=0（适量）：不累加，保持原行
+        } else {
+          await txn.insert('ingredients', {
+            'name': item.name, 'amount': item.amount, 'unit': item.unit,
+            'updated_at': DateTime.now().millisecondsSinceEpoch,
+          });
+        }
+        await txn.delete('shopping_items', where: 'id = ?', whereArgs: [item.itemId]);
       }
     });
-  }
-
-  /// 采购项移入冰箱并删除采购条目（在调用方的事务 txn 内执行）
-  Future<void> _purchaseOne(DatabaseExecutor txn, int itemId, String name, double amount, String unit) async {
-    final existing = await txn.query('ingredients', where: 'name = ?', whereArgs: [name], limit: 1);
-    if (existing.isNotEmpty) {
-      await txn.update('ingredients',
-        {'amount': amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
-        where: 'name = ?', whereArgs: [name],
-      );
-    } else {
-      await txn.insert('ingredients', {
-        'name': name, 'amount': amount, 'unit': unit,
-        'updated_at': DateTime.now().millisecondsSinceEpoch,
-      });
-    }
-    await txn.delete('shopping_items', where: 'id = ?', whereArgs: [itemId]);
   }
 
   // 新增：完成烹饪扣除——冰箱优先，不足从采购扣，归零删除（仅食材）

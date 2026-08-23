@@ -95,18 +95,6 @@ class MealPlanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> markPurchased(int itemId, String name, double amount, String unit) async {
-    await _db.markPurchased(itemId, name, amount, unit);
-    await loadActivePlan();
-  }
-
-  /// 批量确认购买（单次事务，防止循环中列表变化）
-  Future<void> batchMarkPurchased(List<({int itemId, String name, double amount, String unit})> items) async {
-    if (items.isEmpty) return;
-    await _db.batchMarkPurchased(items);
-    await loadActivePlan();
-  }
-
   /// 重新加载 API 配置（用户修改设置后调用）
   Future<void> refreshAPIConfig() async {
     await _mealPlanner.refreshAPIConfig();
