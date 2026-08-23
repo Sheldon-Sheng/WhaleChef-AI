@@ -155,7 +155,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
-                'assets/images/ponding.png',
+                'assets/images/shopping.png',
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.contain,
