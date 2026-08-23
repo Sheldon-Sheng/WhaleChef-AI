@@ -173,7 +173,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: ExpansionTile(
                     leading: const Icon(Icons.smart_toy),
                     title: const Text('AI 配置'),
-                    subtitle: const Text('DeepSeek API 设置'),
+                    subtitle: const Text('API 设置'),
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(16),
