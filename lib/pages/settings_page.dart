@@ -182,6 +182,19 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             ),
           ),
+
+          // 底部图片（完整显示，无边框）
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            child: Image.asset(
+              'assets/images/ponding.png',
+              width: double.infinity,
+              height: 140,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          ),
         ],
       ),
     );
