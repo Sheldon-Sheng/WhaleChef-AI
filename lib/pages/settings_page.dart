@@ -91,187 +91,177 @@ class _SettingsPageState extends State<SettingsPage> {
         title: const Text('设置'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: LayoutBuilder(
-        builder: (ctx, constraints) => Column(
-          children: [
-            Flexible(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // 个人信息
-                  Card(
-                    child: ExpansionTile(
-                      leading: const Icon(Icons.person),
-                      title: const Text('个人信息'),
-                      subtitle: Text(
-                        user != null
-                            ? '${user.age}岁 · ${user.gender} · ${user.height}cm'
-                            : '未设置',
-                      ),
-                      initiallyExpanded: user == null,
-                      children: [
-                        if (user != null) ...[
-                          ListTile(
-                            title: Text('年龄: ${user.age}'),
-                            subtitle: Text(
-                              '身高: ${user.height}cm 体重: ${user.weight}kg',
-                            ),
-                          ),
-                          ListTile(
-                            title: Text('目标体重: ${user.targetWeight}kg'),
-                            subtitle: Text('目标体脂率: ${user.targetBodyFat}%'),
-                          ),
-                          ListTile(
-                            title: Text('爱吃: ${user.preferredFoods}'),
-                            subtitle: Text('讨厌: ${user.dislikedFoods}'),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: TextButton(
-                              onPressed: () => Navigator.pushReplacementNamed(
-                                context,
-                                '/onboarding',
-                              ),
-                              child: const Text('修改个人信息'),
-                            ),
-                          ),
-                        ],
-                      ],
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // 个人信息
+                Card(
+                  child: ExpansionTile(
+                    leading: const Icon(Icons.person),
+                    title: const Text('个人信息'),
+                    subtitle: Text(
+                      user != null
+                          ? '${user.age}岁 · ${user.gender} · ${user.height}cm'
+                          : '未设置',
                     ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // AI 配置
-                  Card(
-                    child: ExpansionTile(
-                      leading: const Icon(Icons.smart_toy),
-                      title: const Text('AI 配置'),
-                      subtitle: const Text('DeepSeek API 设置'),
-                      children: [
+                    initiallyExpanded: user == null,
+                    children: [
+                      if (user != null) ...[
+                        ListTile(
+                          title: Text('年龄: ${user.age}'),
+                          subtitle: Text(
+                            '身高: ${user.height}cm 体重: ${user.weight}kg',
+                          ),
+                        ),
+                        ListTile(
+                          title: Text('目标体重: ${user.targetWeight}kg'),
+                          subtitle: Text('目标体脂率: ${user.targetBodyFat}%'),
+                        ),
+                        ListTile(
+                          title: Text('爱吃: ${user.preferredFoods}'),
+                          subtitle: Text('讨厌: ${user.dislikedFoods}'),
+                        ),
                         Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              TextField(
-                                controller: _apiKeyController,
-                                decoration: InputDecoration(
-                                  labelText: 'API Key',
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _apiKeyVisible
-                                          ? Icons.visibility
-                                          : Icons.visibility_off,
-                                    ),
-                                    onPressed: () => setState(
-                                      () => _apiKeyVisible = !_apiKeyVisible,
-                                    ),
-                                  ),
-                                ),
-                                obscureText: !_apiKeyVisible,
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _modelController,
-                                decoration: const InputDecoration(
-                                  labelText: '模型名称',
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: _saveConfig,
-                                  child: const Text('保存配置'),
-                                ),
-                              ),
-                            ],
+                          child: TextButton(
+                            onPressed: () => Navigator.pushReplacementNamed(
+                              context,
+                              '/onboarding',
+                            ),
+                            child: const Text('修改个人信息'),
                           ),
                         ),
                       ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // 菜谱管理
-                  Card(
-                    child: ExpansionTile(
-                      leading: const Icon(Icons.history),
-                      title: const Text('历史菜谱管理'),
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.delete_sweep),
-                          title: const Text('清除指定时间前的菜谱'),
-                          subtitle: const Text('可选择日期，清除该日期之前的所有记录'),
-                          onTap: _deleteHistory,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // 收藏
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.favorite, color: Colors.red),
-                      title: const Text('我的收藏'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () async {
-                        final favorites = await userProvider
-                            .getFavoriteRecipes();
-                        if (!mounted) return;
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (ctx) => ListView(
-                            padding: const EdgeInsets.all(16),
-                            children: favorites.isEmpty
-                                ? [
-                                    const Center(
-                                      child: Padding(
-                                        padding: EdgeInsets.all(32),
-                                        child: Text('还没有收藏的菜谱'),
-                                      ),
-                                    ),
-                                  ]
-                                : favorites
-                                      .map(
-                                        (r) => ListTile(
-                                          title: Text(r.name),
-                                          subtitle: Text(
-                                            '${r.mealType} · ${r.dayIndex + 1}',
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 8,
-                  ),
-                  child: Image.asset(
-                    'assets/images/ponding.png',
-                    width: double.infinity,
-                    height: 280,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ],
                   ),
                 ),
-              ),
+
+                const SizedBox(height: 12),
+
+                // AI 配置
+                Card(
+                  child: ExpansionTile(
+                    leading: const Icon(Icons.smart_toy),
+                    title: const Text('AI 配置'),
+                    subtitle: const Text('DeepSeek API 设置'),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: _apiKeyController,
+                              decoration: InputDecoration(
+                                labelText: 'API Key',
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _apiKeyVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _apiKeyVisible = !_apiKeyVisible,
+                                  ),
+                                ),
+                              ),
+                              obscureText: !_apiKeyVisible,
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _modelController,
+                              decoration: const InputDecoration(
+                                labelText: '模型名称',
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _saveConfig,
+                                child: const Text('保存配置'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // 菜谱管理
+                Card(
+                  child: ExpansionTile(
+                    leading: const Icon(Icons.history),
+                    title: const Text('历史菜谱管理'),
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.delete_sweep),
+                        title: const Text('清除指定时间前的菜谱'),
+                        subtitle: const Text('可选择日期，清除该日期之前的所有记录'),
+                        onTap: _deleteHistory,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // 收藏
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.favorite, color: Colors.red),
+                    title: const Text('我的收藏'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      final favorites = await userProvider.getFavoriteRecipes();
+                      if (!mounted) return;
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (ctx) => ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: favorites.isEmpty
+                              ? [
+                                  const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(32),
+                                      child: Text('还没有收藏的菜谱'),
+                                    ),
+                                  ),
+                                ]
+                              : favorites
+                                    .map(
+                                      (r) => ListTile(
+                                        title: Text(r.name),
+                                        subtitle: Text(
+                                          '${r.mealType} · ${r.dayIndex + 1}',
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Image.asset(
+              'assets/images/ponding.png',
+              width: double.infinity,
+              height: 187,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          ),
+        ],
       ),
     );
   }
