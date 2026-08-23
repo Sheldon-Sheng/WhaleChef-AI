@@ -72,7 +72,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('欢迎使用 DeepFry'),
+        title: const Text('欢迎使用 肥鱼大厨'),
         leading: _currentStep > 0
           ? IconButton(
               icon: const Icon(Icons.arrow_back),
@@ -133,7 +133,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             ),
           ),
           const SizedBox(height: 32),
-          const Text('欢迎来到 DeepFry！', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const Text('欢迎来到 肥鱼大厨！', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           const Text('让我先了解你的身体状况和饮食偏好，\n我会为你规划健康又美味的一周菜谱。', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
         ],

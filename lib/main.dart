@@ -15,7 +15,7 @@ class DeepFryApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DeepFry',
+      title: '肥鱼大厨',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: kSeedBlue, brightness: Brightness.light),

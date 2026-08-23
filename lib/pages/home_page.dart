@@ -175,7 +175,7 @@ class _HomePageState extends State<HomePage> {
     // 没有活跃计划，显示引导
     if (mealPlanProvider.activePlan == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('DeepFry'), backgroundColor: Theme.of(context).colorScheme.inversePrimary),
+        appBar: AppBar(title: const Text('肥鱼大厨'), backgroundColor: Theme.of(context).colorScheme.inversePrimary),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
@@ -227,7 +227,7 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DeepFry'),
+        title: const Text('肥鱼大厨'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(icon: const Icon(Icons.settings), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()))),

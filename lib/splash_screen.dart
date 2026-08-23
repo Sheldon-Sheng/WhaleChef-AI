@@ -81,7 +81,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 children: [
                   Icon(Icons.restaurant, size: 80, color: Colors.white),
                   SizedBox(height: 16),
-                  Text('DeepFry', style: TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text('肥鱼大厨', style: TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -106,7 +106,7 @@ class _MainApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MealPlanProvider()..loadActivePlan()),
       ],
       child: MaterialApp(
-        title: 'DeepFry',
+        title: '肥鱼大厨',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: kSeedBlue, brightness: Brightness.light),
