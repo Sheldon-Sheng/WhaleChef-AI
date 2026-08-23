@@ -9,6 +9,7 @@ import '../widgets/ai_generating_overlay.dart';
 import 'recipe_detail_page.dart';
 import 'shopping_page.dart';
 import '../theme.dart';
+import '../utils/dish_count.dart';
 import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -32,7 +33,6 @@ class _HomePageState extends State<HomePage> {
   void _showGenerateDialog() {
     int dishesCount = 3;
     int meatDishes = 1;
-    int veggieDishes = 2;
     bool wantSoup = true;
     int cookingTime = 30;
     String cuisineStyle = '中餐';
@@ -68,7 +68,9 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
+        builder: (ctx, setDialogState) {
+          final breakdown = computeDishBreakdown(dishesCount, meatDishes);
+          return AlertDialog(
           title: const Text('菜谱要求'),
           content: SingleChildScrollView(
             child: Column(
@@ -77,12 +79,27 @@ class _HomePageState extends State<HomePage> {
                 DropdownButtonFormField<int>(
                   initialValue: dishesCount, decoration: const InputDecoration(labelText: '几道菜'),
                   items: [1,2,3,4,5].map((i) => DropdownMenuItem(value: i, child: Text('$i 道'))).toList(),
-                  onChanged: (v) => setDialogState(() => dishesCount = v!),
+                  onChanged: (v) => setDialogState(() {
+                    dishesCount = v!;
+                    meatDishes = meatDishes.clamp(0, dishesCount);
+                  }),
                 ),
                 Row(children: [
-                  Expanded(child: TextField(decoration: const InputDecoration(labelText: '荤菜'), keyboardType: TextInputType.number, onChanged: (v) => meatDishes = int.tryParse(v) ?? 1)),
+                  Expanded(child: InputDecorator(
+                    decoration: const InputDecoration(labelText: '荤菜'),
+                    child: DropdownButton<int>(
+                      value: breakdown.meat,
+                      isExpanded: true,
+                      isDense: true,
+                      items: List.generate(dishesCount + 1, (i) => DropdownMenuItem(value: i, child: Text('$i 道'))),
+                      onChanged: (v) => setDialogState(() => meatDishes = v!),
+                    ),
+                  )),
                   const SizedBox(width: 16),
-                  Expanded(child: TextField(decoration: const InputDecoration(labelText: '素菜'), keyboardType: TextInputType.number, onChanged: (v) => veggieDishes = int.tryParse(v) ?? 2)),
+                  Expanded(child: InputDecorator(
+                    decoration: const InputDecoration(labelText: '素菜'),
+                    child: Text('${breakdown.veggie} 道'),
+                  )),
                 ]),
                 SwitchListTile(title: const Text('加汤'), value: wantSoup, onChanged: (v) => setDialogState(() => wantSoup = v)),
                 TextField(decoration: const InputDecoration(labelText: '烹饪时间限制（分钟）'), keyboardType: TextInputType.number, onChanged: (v) => cookingTime = int.tryParse(v) ?? 30),
@@ -120,14 +137,15 @@ class _HomePageState extends State<HomePage> {
             ElevatedButton(onPressed: () {
               Navigator.pop(ctx);
               context.read<MealPlanProvider>().generateWeekPlan(
-                dishesCount: dishesCount, meatDishes: meatDishes, veggieDishes: veggieDishes,
+                dishesCount: dishesCount, meatDishes: breakdown.meat, veggieDishes: breakdown.veggie,
                 wantSoup: wantSoup, cookingTimeMinutes: cookingTime, cuisineStyle: cuisineStyle,
                 wantBreakfast: wantBreakfast, wantLunch: wantLunch, wantDinner: wantDinner,
                 preferFavorites: preferFavorites, favoriteCount: favoriteCount,
               );
             }, child: const Text('生成菜谱')),
           ],
-        ),
+        );
+        },
       ),
     );
   }

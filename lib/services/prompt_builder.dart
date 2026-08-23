@@ -85,7 +85,7 @@ class PromptBuilder {
 
     // 菜谱要求
     buffer.writeln('## 菜谱要求');
-    buffer.writeln('- 每餐 $dishesCount 道菜（$meatDishes 荤 $veggieDishes 素）${wantSoup ? '，加汤' : ''}');
+    buffer.writeln('- 每餐共 $dishesCount 道菜，其中荤菜 $meatDishes 道、素菜 $veggieDishes 道${wantSoup ? '，加汤' : ''}');
     buffer.writeln('- 烹饪时间限制：$cookingTimeMinutes 分钟内完成');
     buffer.writeln('- 菜品风格：$cuisineStyle');
 
