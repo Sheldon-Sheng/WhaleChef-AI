@@ -64,10 +64,13 @@ class _AIGeneratingOverlayState extends State<AIGeneratingOverlay> {
               child: const Icon(Icons.image, size: 64, color: Colors.white70),
             ),
           ),
-          // 前景内容 + 半透明遮罩保证可读性
-          Center(
+          // 前景内容（失败态居中；生成中的进度条在底部）
+          Align(
+            alignment: widget.isFailed ? Alignment.center : Alignment.bottomCenter,
             child: Container(
-              margin: const EdgeInsets.all(32),
+              margin: widget.isFailed
+                  ? const EdgeInsets.all(32)
+                  : const EdgeInsets.fromLTRB(16, 0, 16, 24),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: widget.isFailed ? Colors.white : Colors.black.withValues(alpha: 0.35),
