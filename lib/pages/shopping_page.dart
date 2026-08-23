@@ -152,14 +152,16 @@ class _ShoppingPageState extends State<ShoppingPage> {
               borderRadius: BorderRadius.circular(8),
               color: Colors.grey[50],
             ),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.image_outlined, size: 40, color: Colors.grey),
-                  SizedBox(height: 6),
-                  Text('图片预留位', style: TextStyle(color: Colors.grey)),
-                ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/images/ponding.png',
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Icon(Icons.image_outlined, size: 40, color: Colors.grey),
+                ),
               ),
             ),
           ),
