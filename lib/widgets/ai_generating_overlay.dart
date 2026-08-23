@@ -70,8 +70,13 @@ class _AIGeneratingOverlayState extends State<AIGeneratingOverlay> {
               margin: const EdgeInsets.all(32),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.35),
+                color: widget.isFailed ? Colors.white : Colors.black.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(16),
+                boxShadow: widget.isFailed
+                    ? const [
+                        BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 4))
+                      ]
+                    : null,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -80,8 +85,15 @@ class _AIGeneratingOverlayState extends State<AIGeneratingOverlay> {
                     const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
                     const SizedBox(height: 16),
                     Text(widget.errorMessage ?? '生成失败',
-                        style: const TextStyle(fontSize: 16, color: Colors.white)),
-                    const SizedBox(height: 24),
+                        style: const TextStyle(fontSize: 16, color: Colors.black87)),
+                    const SizedBox(height: 20),
+                    Image.asset(
+                      'assets/images/error.png',
+                      height: 140,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: 20),
                     ElevatedButton.icon(
                       onPressed: widget.onRetry,
                       icon: const Icon(Icons.refresh),
