@@ -70,4 +70,21 @@ void main() {
     await LocalDB().clearAllIngredients();
     expect(await LocalDB().getIngredients(), isEmpty);
   });
+
+  test('未配置 AI 时返回默认 base_url', () async {
+    final config = await LocalDB().getAIConfig();
+    expect(config['base_url'], 'https://api.deepseek.com/v1');
+  });
+
+  test('AI 配置保存/读取 round-trip 含 base_url', () async {
+    await LocalDB().saveAIConfig(
+      'test-key',
+      'test-model',
+      'https://api.openai.com/v1',
+    );
+    final config = await LocalDB().getAIConfig();
+    expect(config['api_key'], 'test-key');
+    expect(config['model'], 'test-model');
+    expect(config['base_url'], 'https://api.openai.com/v1');
+  });
 }

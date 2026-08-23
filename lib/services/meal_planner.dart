@@ -1,5 +1,6 @@
 // lib/services/meal_planner.dart
 import 'dart:convert';
+
 import '../data/local_db.dart';
 import '../models/kitchen_item.dart';
 import '../models/recipe.dart';
@@ -20,6 +21,7 @@ class MealPlannerService {
     _api = DeepSeekAPI(
       apiKey: config['api_key'] ?? '',
       model: config['model'] ?? 'deepseek-v4-flash',
+      baseUrl: config['base_url'] ?? kDefaultAIBaseUrl,
     );
   }
 
@@ -50,11 +52,17 @@ class MealPlannerService {
 
     final fridgeItems = await _db.getIngredients();
     final kitchenItems = await _db.getKitchenItems();
-    final tools = kitchenItems.where((i) => i.type == KitchenItemType.tool).toList();
-    final seasonings = kitchenItems.where((i) => i.type == KitchenItemType.seasoning).toList();
+    final tools = kitchenItems
+        .where((i) => i.type == KitchenItemType.tool)
+        .toList();
+    final seasonings = kitchenItems
+        .where((i) => i.type == KitchenItemType.seasoning)
+        .toList();
 
     // 2. 获取过去 1 个月的历史菜谱
-    final oneMonthAgo = DateTime.now().subtract(const Duration(days: 30)).millisecondsSinceEpoch;
+    final oneMonthAgo = DateTime.now()
+        .subtract(const Duration(days: 30))
+        .millisecondsSinceEpoch;
     final now = DateTime.now().millisecondsSinceEpoch;
     final historyRecipes = await _db.getRecipesInDateRange(oneMonthAgo, now);
 
@@ -122,10 +130,16 @@ class MealPlannerService {
 
     final fridgeItems = await _db.getIngredients();
     final kitchenItems = await _db.getKitchenItems();
-    final tools = kitchenItems.where((i) => i.type == KitchenItemType.tool).toList();
-    final seasonings = kitchenItems.where((i) => i.type == KitchenItemType.seasoning).toList();
+    final tools = kitchenItems
+        .where((i) => i.type == KitchenItemType.tool)
+        .toList();
+    final seasonings = kitchenItems
+        .where((i) => i.type == KitchenItemType.seasoning)
+        .toList();
 
-    final oneMonthAgo = DateTime.now().subtract(const Duration(days: 30)).millisecondsSinceEpoch;
+    final oneMonthAgo = DateTime.now()
+        .subtract(const Duration(days: 30))
+        .millisecondsSinceEpoch;
     final now = DateTime.now().millisecondsSinceEpoch;
     final historyRecipes = await _db.getRecipesInDateRange(oneMonthAgo, now);
 
@@ -198,10 +212,9 @@ class MealPlannerService {
       'cooking_time': cookingTimeMinutes,
       'cuisine_style': cuisineStyle,
     });
-    final planId = await _db.addWeeklyPlan(WeeklyPlan(
-      weekStart: weekStart,
-      planConfig: planConfig,
-    ));
+    final planId = await _db.addWeeklyPlan(
+      WeeklyPlan(weekStart: weekStart, planConfig: planConfig),
+    );
 
     // 保存菜品
     final days = weekPlan['days'] as List? ?? [];
@@ -214,28 +227,40 @@ class MealPlannerService {
           final name = e is Map ? (e['name'] ?? '').toString() : e.toString();
           if (e is Map && (e['amount'] is num || e['quantity'] is String)) {
             if (e['amount'] is num) {
-              return {'name': name, 'amount': (e['amount'] as num).toDouble(), 'unit': (e['unit'] ?? '').toString()};
+              return {
+                'name': name,
+                'amount': (e['amount'] as num).toDouble(),
+                'unit': (e['unit'] ?? '').toString(),
+              };
             }
             final parsed = parseQuantity((e['quantity'] ?? '').toString());
             return {
               'name': name,
               'amount': parsed?.amount ?? 0,
-              'unit': parsed?.unit ?? ((e['quantity'] ?? '').toString().isEmpty ? '适量' : (e['quantity'] ?? '').toString()),
+              'unit':
+                  parsed?.unit ??
+                  ((e['quantity'] ?? '').toString().isEmpty
+                      ? '适量'
+                      : (e['quantity'] ?? '').toString()),
             };
           }
           return {'name': name, 'amount': 0, 'unit': '适量'};
         }).toList();
-        final seasonings = (meal['seasonings'] as List?)?.map((e) => e.toString()).toList() ?? [];
-        await _db.addRecipe(Recipe(
-          planId: planId,
-          dayIndex: dayIndex - 1,
-          mealType: meal['type'] as String? ?? '',
-          name: meal['name'] as String? ?? '',
-          description: meal['description'] as String? ?? '',
-          calories: (meal['calories'] as num?)?.toDouble(),
-          ingredientList: jsonEncode(ingredients),
-          seasoningList: jsonEncode(seasonings),
-        ));
+        final seasonings =
+            (meal['seasonings'] as List?)?.map((e) => e.toString()).toList() ??
+            [];
+        await _db.addRecipe(
+          Recipe(
+            planId: planId,
+            dayIndex: dayIndex - 1,
+            mealType: meal['type'] as String? ?? '',
+            name: meal['name'] as String? ?? '',
+            description: meal['description'] as String? ?? '',
+            calories: (meal['calories'] as num?)?.toDouble(),
+            ingredientList: jsonEncode(ingredients),
+            seasoningList: jsonEncode(seasonings),
+          ),
+        );
       }
     }
 
@@ -249,14 +274,37 @@ class MealPlannerService {
       final fridgeUnit = fridge?.unit ?? '';
       if (need.amount <= 0) {
         // 需求适量：原样加入采购
-        shoppingItems.add(ShoppingItem(planId: planId, name: need.name, amount: 0, unit: need.unit, source: 'plan'));
-      } else if (fridgeAmount > 0 && fridgeUnit == need.unit && fridgeAmount >= need.amount) {
+        shoppingItems.add(
+          ShoppingItem(
+            planId: planId,
+            name: need.name,
+            amount: 0,
+            unit: need.unit,
+            source: 'plan',
+          ),
+        );
+      } else if (fridgeAmount > 0 &&
+          fridgeUnit == need.unit &&
+          fridgeAmount >= need.amount) {
         // 情况一：冰箱同单位且够，不买
         continue;
       } else {
         // 情况二：买差量（单位一致且不足 → 差量；无冰箱或单位不一致 → 全量）
-        final shortfall = computeShoppingShortfall(need.amount, need.unit, fridgeAmount, fridgeUnit);
-        shoppingItems.add(ShoppingItem(planId: planId, name: need.name, amount: shortfall, unit: need.unit, source: 'plan'));
+        final shortfall = computeShoppingShortfall(
+          need.amount,
+          need.unit,
+          fridgeAmount,
+          fridgeUnit,
+        );
+        shoppingItems.add(
+          ShoppingItem(
+            planId: planId,
+            name: need.name,
+            amount: shortfall,
+            unit: need.unit,
+            source: 'plan',
+          ),
+        );
       }
     }
     if (shoppingItems.isNotEmpty) {
@@ -272,15 +320,19 @@ class MealPlannerService {
     final activePlan = await _db.getActivePlan();
     if (activePlan != null) {
       final existingItems = await _db.getShoppingItems(activePlan.id!);
-      final alreadyInList = existingItems.any((i) => i.name == seasoning.name && i.source == 'seasoning');
+      final alreadyInList = existingItems.any(
+        (i) => i.name == seasoning.name && i.source == 'seasoning',
+      );
       if (!alreadyInList) {
-        await _db.addShoppingItem(ShoppingItem(
-          planId: activePlan.id!,
-          name: seasoning.name,
-          amount: 1,
-          unit: '份',
-          source: 'seasoning',
-        ));
+        await _db.addShoppingItem(
+          ShoppingItem(
+            planId: activePlan.id!,
+            name: seasoning.name,
+            amount: 1,
+            unit: '份',
+            source: 'seasoning',
+          ),
+        );
       }
     }
   }

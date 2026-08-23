@@ -18,6 +18,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final _db = LocalDB();
   final _apiKeyController = TextEditingController();
   final _modelController = TextEditingController();
+  final _baseUrlController = TextEditingController();
   bool _apiKeyVisible = false;
 
   @override
@@ -30,11 +31,16 @@ class _SettingsPageState extends State<SettingsPage> {
     final config = await _db.getAIConfig();
     _apiKeyController.text = config['api_key'] ?? '';
     _modelController.text = config['model'] ?? 'deepseek-v4-flash';
+    _baseUrlController.text = config['base_url'] ?? '';
     setState(() {});
   }
 
   Future<void> _saveConfig() async {
-    await _db.saveAIConfig(_apiKeyController.text, _modelController.text);
+    await _db.saveAIConfig(
+      _apiKeyController.text,
+      _modelController.text,
+      _baseUrlController.text,
+    );
     // 刷新各 Provider 持有的 MealPlannerService 的 API 配置
     if (!mounted) return;
     final mealPlanProvider = context.read<MealPlanProvider>();
@@ -175,6 +181,26 @@ class _SettingsPageState extends State<SettingsPage> {
                               decoration: const InputDecoration(
                                 labelText: '模型名称',
                               ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _baseUrlController,
+                              decoration: InputDecoration(
+                                labelText: 'API 地址 (Base URL)',
+                                helperText: '填基础地址，自动补 /chat/completions',
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.info_outline),
+                                  tooltip: '获取 API Key 教程',
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('获取 API Key 教程（待补充）'),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              keyboardType: TextInputType.url,
                             ),
                             const SizedBox(height: 16),
                             SizedBox(
