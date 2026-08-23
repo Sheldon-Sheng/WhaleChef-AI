@@ -158,7 +158,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
                 'assets/images/ponding.png',
                 width: double.infinity,
                 height: double.infinity,
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Center(
                   child: Icon(Icons.image_outlined, size: 40, color: Colors.grey),
                 ),
