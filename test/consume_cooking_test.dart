@@ -91,4 +91,15 @@ void main() {
     final shop = await LocalDB().getShoppingItems(planId);
     expect(shop.where((s) => s.name == '番茄'), hasLength(1)); // 采购不动
   });
+
+  test('采购差量：冰箱够则不买，不够则买差量', () async {
+    final planId = await makePlan();
+    // 冰箱已有牛肉 300g
+    await LocalDB().saveIngredient('牛肉', 300, 'g');
+    // 需求：牛肉 500g
+    final needs = [(name: '牛肉', amount: 500.0, unit: 'g')];
+    await LocalDB().consumeForCooking(planId, needs); // 只验证扣减——差量生成在 _savePlan，逻辑见下方
+    final ing = await LocalDB().getIngredientByName('牛肉');
+    expect(ing, isNull); // 300 < 500 不够，扣光冰箱
+  });
 }

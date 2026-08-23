@@ -61,7 +61,7 @@ class PromptBuilder {
     // 冰箱库存
     buffer.writeln('## 冰箱食材库存');
     if (fridgeItems.isEmpty) {
-      buffer.writeln('- 冰箱为空，请在采购清单中列出所需食材');
+      buffer.writeln('- 冰箱为空，请在各餐的 ingredients 中列出所需食材数量');
     } else {
       for (final item in fridgeItems) {
         buffer.writeln('- ${item.name}：${item.quantity}');
@@ -137,25 +137,22 @@ class PromptBuilder {
     buffer.writeln('''
 {
   "week_plan": {
-    "shopping_list": [
-      {"name": "食材名称", "quantity": "数量（如 500g、3个）"}
-    ],
     "days": [
       {
         "day": 1,
         "meals": [
           {"type": "早餐", "name": "菜名", "description": "简要做法说明", "calories": 300,
-           "ingredients": [{"name": "食材1", "quantity": "数量（如 2个、500g）"}],
+           "ingredients": [{"name": "番茄", "amount": 2, "unit": "个"}, {"name": "盐", "amount": null, "unit": "适量"}],
            "seasonings": ["调味品1", "调味品2"]},
           {"type": "午餐", "name": "菜名", "description": "简要做法说明", "calories": 500,
-           "ingredients": [{"name": "食材1", "quantity": "数量（如 2个、500g）"}],
+           "ingredients": [{"name": "食材1", "amount": 200, "unit": "g"}],
            "seasonings": ["调味品1", "调味品2"]}
         ]
       }
     ]
   }
-}
-''');
+}''');
+    buffer.writeln('"amount" 为所需数量数值（无数值则为 null），"unit" 为单位（如 个、g、ml），不要把单位写进 amount。');
 
     return buffer.toString();
   }

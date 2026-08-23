@@ -43,7 +43,7 @@ class _FridgePageState extends State<FridgePage> {
 
   void _showEditDialog(Ingredient item) {
     _nameController.text = item.name;
-    _qtyController.text = item.quantity;
+    _qtyController.text = item.quantity; // 兼容显示 "5个"
     _categoryController.text = item.category ?? '';
     _editingId = item.id.toString();
     _showDialog();
@@ -64,17 +64,22 @@ class _FridgePageState extends State<FridgePage> {
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
         ElevatedButton(onPressed: () async {
           if (_nameController.text.isEmpty || _qtyController.text.isEmpty) return;
+          final qtyMatch = RegExp(r'^([\d.]+)\s*(.*)$').firstMatch(_qtyController.text.trim());
+          final amount = qtyMatch != null ? (double.tryParse(qtyMatch.group(1)!) ?? 0) : 0.0;
+          final unit = qtyMatch != null ? (qtyMatch.group(2)?.trim() ?? '') : _qtyController.text.trim();
           if (_editingId != null) {
             await context.read<FridgeProvider>().updateItem(Ingredient(
               id: int.parse(_editingId!),
               name: _nameController.text,
-              quantity: _qtyController.text,
+              amount: amount,
+              unit: unit,
               category: _categoryController.text.isNotEmpty ? _categoryController.text : null,
             ));
           } else {
             await context.read<FridgeProvider>().addItem(Ingredient(
               name: _nameController.text,
-              quantity: _qtyController.text,
+              amount: amount,
+              unit: unit,
               category: _categoryController.text.isNotEmpty ? _categoryController.text : null,
             ));
           }
@@ -99,6 +104,25 @@ class _FridgePageState extends State<FridgePage> {
     return Scaffold(
       appBar: AppBar(title: const Text('冰箱'), backgroundColor: Theme.of(context).colorScheme.inversePrimary, actions: [
         IconButton(icon: const Icon(Icons.add), onPressed: _showAddDialog),
+        IconButton(
+          icon: const Icon(Icons.delete_sweep),
+          onPressed: items.isEmpty ? null : () async {
+            final ok = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('清空冰箱'),
+                content: const Text('确定要清空冰箱中所有食材吗？此操作不可撤销。'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+                  ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('清空')),
+                ],
+              ),
+            );
+            if (ok == true) {
+              await context.read<FridgeProvider>().clearAll();
+            }
+          },
+        ),
       ]),
       body: provider.isLoading
         ? const Center(child: CircularProgressIndicator())

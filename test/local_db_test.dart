@@ -43,4 +43,31 @@ void main() {
     expect(ing!.amount, 5);
     expect(ing.unit, '个');
   });
+
+  test('addToIngredientStock 已有食材累加存量', () async {
+    await LocalDB().saveIngredient('牛肉', 300, 'g');
+    final ing = await LocalDB().getIngredientByName('牛肉');
+    await LocalDB().addToIngredientStock(ing!.id!, 200, 'g');
+    final updated = await LocalDB().getIngredientByName('牛肉');
+    expect(updated, isNotNull);
+    expect(updated!.amount, 500);
+    expect(updated.unit, 'g');
+  });
+
+  test('addToIngredientStock amount<=0 不累加（适量）', () async {
+    await LocalDB().saveIngredient('盐', 0, '适量');
+    final ing = await LocalDB().getIngredientByName('盐');
+    await LocalDB().addToIngredientStock(ing!.id!, 0, '适量');
+    final updated = await LocalDB().getIngredientByName('盐');
+    expect(updated, isNotNull);
+    expect(updated!.amount, 0);
+    expect(updated.unit, '适量');
+  });
+
+  test('clearAllIngredients 清空冰箱', () async {
+    await LocalDB().saveIngredient('番茄', 3, '个');
+    await LocalDB().saveIngredient('黄瓜', 2, '根');
+    await LocalDB().clearAllIngredients();
+    expect(await LocalDB().getIngredients(), isEmpty);
+  });
 }

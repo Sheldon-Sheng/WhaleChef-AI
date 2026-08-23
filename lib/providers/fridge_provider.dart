@@ -34,8 +34,13 @@ class FridgeProvider extends ChangeNotifier {
     await loadItems();
   }
 
-  Future<void> updateQuantity(int id, String newQuantity) async {
-    await _db.updateIngredientQuantity(id, newQuantity);
+  Future<void> updateQuantity(int id, double amount, String unit) async {
+    await _db.updateIngredientQuantity(id, amount, unit);
+    await loadItems();
+  }
+
+  Future<void> clearAll() async {
+    await _db.clearAllIngredients();
     await loadItems();
   }
 }

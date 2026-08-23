@@ -169,39 +169,6 @@ class MealPlannerService {
     return result;
   }
 
-  /// 根据当前活跃计划生成采购清单
-  Future<List<ShoppingItem>> generateShoppingList() async {
-    final activePlan = await _db.getActivePlan();
-    if (activePlan == null) return [];
-
-    final recipes = await _db.getRecipesByPlan(activePlan.id!);
-    final ingredientNames = <String>{};
-    for (final recipe in recipes) {
-      final names = recipe.ingredientItems.map((i) => i.name);
-      ingredientNames.addAll(names);
-    }
-
-    // 已有的采购清单（含调味料等来源），避免重复
-    final existingItems = await _db.getShoppingItems(activePlan.id!);
-    final existingNames = existingItems.map((i) => i.name).toSet();
-
-    final items = <ShoppingItem>[];
-    for (final name in ingredientNames) {
-      if (existingNames.contains(name)) continue;
-      items.add(ShoppingItem(
-        planId: activePlan.id!,
-        name: name,
-        amount: 0,
-        unit: '适量',
-        source: 'plan',
-      ));
-    }
-    if (items.isNotEmpty) {
-      await _db.addShoppingItems(items);
-    }
-    return [...existingItems, ...items];
-  }
-
   /// 保存解析后的菜谱到数据库
   Future<void> _savePlan(
     Map<String, dynamic> result, {
@@ -272,19 +239,25 @@ class MealPlannerService {
       }
     }
 
-    // 保存采购清单
-    final shoppingList = weekPlan['shopping_list'] as List? ?? [];
-    final shoppingItems = shoppingList.map((item) {
-      final qty = item['quantity'] as String? ?? '';
-      final parsed = parseQuantity(qty);
-      return ShoppingItem(
-        planId: planId,
-        name: item['name'] as String? ?? '',
-        amount: parsed?.amount ?? 0,
-        unit: parsed?.unit ?? qty,
-        source: 'plan',
-      );
-    }).toList();
+    // 保存采购清单：周需求 − 冰箱存量（差量）
+    final allRecipes = await _db.getRecipesByPlan(planId);
+    final needs = aggregateRecipeIngredients(allRecipes);
+    final shoppingItems = <ShoppingItem>[];
+    for (final need in needs) {
+      final fridge = await _db.getIngredientByName(need.name);
+      final fridgeAmount = fridge?.amount ?? 0;
+      if (need.amount <= 0) {
+        // 需求适量：原样加入采购
+        shoppingItems.add(ShoppingItem(planId: planId, name: need.name, amount: 0, unit: need.unit, source: 'plan'));
+      } else if (fridgeAmount > 0 && fridgeAmount >= need.amount) {
+        // 情况一：冰箱够，不买
+        continue;
+      } else {
+        // 情况二：买差量（冰箱无 → 全量）
+        final shortfall = need.amount - (fridgeAmount > 0 ? fridgeAmount : 0);
+        shoppingItems.add(ShoppingItem(planId: planId, name: need.name, amount: shortfall, unit: need.unit, source: 'plan'));
+      }
+    }
     if (shoppingItems.isNotEmpty) {
       await _db.addShoppingItems(shoppingItems);
     }

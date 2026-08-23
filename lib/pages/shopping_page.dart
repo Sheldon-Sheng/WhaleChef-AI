@@ -47,7 +47,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
       for (final s in selected) {
         final existing = await db.getIngredientByName(s.name);
         if (existing != null) {
-          await db.updateIngredientQuantity(existing.id!, s.amount, s.unit);
+          await db.addToIngredientStock(existing.id!, s.amount, s.unit);
         } else {
           await db.saveIngredient(s.name, s.amount, s.unit);
         }

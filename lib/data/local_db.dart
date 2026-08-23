@@ -234,6 +234,23 @@ class LocalDB {
     await db.update('ingredients', {'amount': amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch}, where: 'id = ?', whereArgs: [id]);
   }
 
+  /// 冰箱已有食材时累加存量（amount<=0 视为适量，不累加数值）
+  Future<void> addToIngredientStock(int id, double amount, String unit) async {
+    if (amount <= 0) return;
+    final rows = await db.query('ingredients', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return;
+    final existingAmount = (rows.first['amount'] as num?)?.toDouble() ?? 0;
+    await db.update('ingredients',
+      {'amount': existingAmount + amount, 'unit': unit, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+      where: 'id = ?', whereArgs: [id],
+    );
+  }
+
+  /// 清空冰箱
+  Future<void> clearAllIngredients() async {
+    await db.delete('ingredients');
+  }
+
   // === Kitchen Items ===
   Future<List<KitchenItem>> getKitchenItems({String? type}) async {
     final where = type != null ? 'type = ?' : null;
