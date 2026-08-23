@@ -71,9 +71,9 @@ void main() {
     expect(await LocalDB().getIngredients(), isEmpty);
   });
 
-  test('未配置 AI 时返回默认 base_url', () async {
+  test('未配置 AI 时 base_url 为空（无默认值）', () async {
     final config = await LocalDB().getAIConfig();
-    expect(config['base_url'], 'https://api.deepseek.com/v1');
+    expect(config['base_url'], '');
   });
 
   test('AI 配置保存/读取 round-trip 含 base_url', () async {

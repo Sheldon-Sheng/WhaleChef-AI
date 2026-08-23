@@ -21,7 +21,7 @@ class MealPlannerService {
     _api = DeepSeekAPI(
       apiKey: config['api_key'] ?? '',
       model: config['model'] ?? 'deepseek-v4-flash',
-      baseUrl: config['base_url'] ?? kDefaultAIBaseUrl,
+      baseUrl: config['base_url'] ?? '',
     );
   }
 

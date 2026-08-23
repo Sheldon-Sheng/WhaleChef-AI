@@ -8,7 +8,6 @@ import '../models/kitchen_item.dart';
 import '../models/weekly_plan.dart';
 import '../models/recipe.dart';
 import '../models/shopping_item.dart';
-import '../services/deepseek_api.dart';
 
 class LocalDB {
   static final LocalDB _instance = LocalDB._internal();
@@ -732,13 +731,13 @@ class LocalDB {
       return {
         'api_key': '',
         'model': 'deepseek-v4-flash',
-        'base_url': kDefaultAIBaseUrl,
+        'base_url': '',
       };
     }
     return {
       'api_key': maps.first['api_key'] as String? ?? '',
       'model': maps.first['model'] as String? ?? 'deepseek-v4-flash',
-      'base_url': maps.first['base_url'] as String? ?? kDefaultAIBaseUrl,
+      'base_url': maps.first['base_url'] as String? ?? '',
     };
   }
 

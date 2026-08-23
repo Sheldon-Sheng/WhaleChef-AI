@@ -3,16 +3,13 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
-/// 默认 AI 服务地址（DeepSeek，OpenAI 兼容 chat/completions）
-const kDefaultAIBaseUrl = 'https://api.deepseek.com/v1';
-
-/// 归一化 base URL：去首尾空白与尾部斜杠；空则回退默认
+/// 归一化 base URL：去首尾空白与尾部斜杠；空则保持为空（无默认值，需显式配置）
 String normalizeBaseUrl(String url) {
   var u = url.trim();
   while (u.endsWith('/')) {
     u = u.substring(0, u.length - 1);
   }
-  return u.isEmpty ? kDefaultAIBaseUrl : u;
+  return u;
 }
 
 class DeepSeekAPI {
@@ -23,7 +20,7 @@ class DeepSeekAPI {
   DeepSeekAPI({
     required String apiKey,
     String model = 'deepseek-v4-flash',
-    String baseUrl = kDefaultAIBaseUrl,
+    String baseUrl = '',
   }) : _apiKey = apiKey,
        _model = model,
        _dio = Dio(
@@ -44,6 +41,9 @@ class DeepSeekAPI {
   /// 返回解析后的 JSON Map
   /// 抛出异常：网络错误、API 错误、JSON 解析错误
   Future<Map<String, dynamic>> generateMealPlan(String prompt) async {
+    if (_dio.options.baseUrl.trim().isEmpty) {
+      throw DeepSeekException('请先在设置中配置 API 地址 (Base URL)');
+    }
     try {
       final response = await _dio.post(
         '/chat/completions',
