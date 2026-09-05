@@ -1,5 +1,7 @@
 # 肥鱼大厨（Whale Chef AI）· 工程名 DeepFry
 
+**[English](README.en.md) | 简体中文**
+
 一个 **Flutter 智能厨房 / 一周菜谱规划 App**（iOS + Android）。填写身体数据、让 AI 生成一周菜谱、自动算采购差量、按天扣减冰箱/采购、统计每周摄入卡路里。
 
 ## ✨ 功能特性
