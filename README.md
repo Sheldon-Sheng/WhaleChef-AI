@@ -1,71 +1,71 @@
-# 肥鱼大厨（Whale Chef AI）· 工程名 DeepFry
+# Whale Chef AI (肥鱼大厨) · codename DeepFry
 
-**[English](README.en.md) | 简体中文**
+**English | [简体中文](README.zh.md)**
 
-一个 **Flutter 智能厨房 / 一周菜谱规划 App**（iOS + Android）。填写身体数据、让 AI 生成一周菜谱、自动算采购差量、按天扣减冰箱/采购、统计每周摄入卡路里。
+A **smart-kitchen / weekly-meal-planning app** built with Flutter (iOS + Android). Fill in your body data, let the AI generate a week of recipes, auto-compute the shopping list from your fridge stock, deduct ingredients day by day, and track your weekly calorie intake.
 
-## ✨ 功能特性
+## ✨ Features
 
-- **AI 生成一周菜谱**：每餐带食材数量 + 调味品；支持荤素配比、加汤、烹饪时间、菜系、餐次（早/午/晚）、收藏优先等自定义。
-- **健康与过敏约束**：填写慢性病、过敏的食物后，Prompt 会要求 AI **严格避开忌口/过敏食材**。
-- **按冰箱算差量**：菜谱需求 − 冰箱存量 = 采购清单；按名字/单位一致才可扣减。
-- **完成烹饪自动扣减**：冰箱优先扣，不足从采购清单扣，归零即删；调味品用完会提示并加入采购。
-- **每周卡路里统计**：点「已完成今天的烹饪」自动记录当日菜谱与卡路里，底部「统计」页展示**每周柱状图**（X = 周一起止日期，Y = 该周累计卡路里）。
-- **中/英双语**：跟随系统语言默认，可在设置里手动切换；AI Prompt 也按语言切换，AI 以对应语言回复。
-- **必须用已有厨具**：Prompt 要求菜谱能用你填写的厨具完成烹饪。
+- **AI-generated weekly meal plan**: each meal lists ingredients with quantities + seasonings. Customizable: meat/veggie ratio, add soup, cooking time, cuisine style, meal types (breakfast/lunch/dinner), prioritize favorites.
+- **Health & allergy constraints**: once you fill in chronic conditions and food allergens, the prompt asks the AI to **strictly avoid contraindicated / allergenic ingredients**.
+- **Shopping list = need − fridge**: derived from fridge inventory; only subtracted when names & units match.
+- **Auto-deduct when cooking**: fridge first, then the shopping list, delete when it hits zero; running out of a seasoning prompts you and adds it to the shopping list.
+- **Weekly calorie stats**: tapping "Finished Today's Cooking" records the day's recipes + calories; the **Stats** tab shows a **weekly bar chart** (X = week start~end dates, Y = cumulative calories).
+- **Chinese / English**: follows the system language by default, switchable in Settings; the AI prompt switches too, and the AI replies in that language.
+- **Must use your utensils**: the prompt requires every dish to be cookable with the utensils you listed.
 
-## 🛠 技术栈
+## 🛠 Tech stack
 
-- **Flutter 3.47 / Dart 3.13**，状态管理 **Provider**
-- 本地数据 **sqflite**（`deepfry.db`，含用户资料/冰箱/厨房/菜谱/采购/烹饪记录）
-- AI 集成：**OpenAI 兼容 chat/completions**（DeepSeek / OpenAI / Moonshot / 通义千问 / 智谱 GLM / SiliconFlow / 自定义）
-- 图表 **fl_chart**，本地化 **gen-l10n**，偏好持久化 **shared_preferences**
+- **Flutter 3.47 / Dart 3.13**, state management with **Provider**
+- Local storage with **sqflite** (`deepfry.db`: profile, fridge, kitchen, recipes, shopping, cooking records)
+- AI integration: **OpenAI-compatible chat/completions** (DeepSeek / OpenAI / Moonshot / Qwen / Zhipu GLM / SiliconFlow / custom)
+- Charts via **fl_chart**, localization via **gen-l10n**, preferences via **shared_preferences**
 
-## 🚀 快速开始
+## 🚀 Getting started
 
 ```bash
-# 1. 拉取依赖
+# 1. Fetch dependencies
 flutter pub get
 
-# 2. 首次会生成 l10n 产物（已提交，也可手动生成）
+# 2. gen-l10n output is committed; you can regenerate it manually too
 flutter gen-l10n
 
-# 3. 运行（连模拟器/真机）
+# 3. Run (simulator / real device)
 flutter run
 ```
 
-**配置 AI**：设置 → AI 配置，填入 `API Key`、`模型名称`、`Base URL`（选择预设或自定义，如 `https://api.deepseek.com/v1`）。
+**Configure AI**: Settings → AI Config, enter `API Key`, `Model`, and `Base URL` (pick a preset or custom, e.g. `https://api.deepseek.com/v1`).
 
-## 📦 打包
+## 📦 Build
 
 ```bash
 flutter build apk --release          # Android APK
-flutter build ios --release          # iOS（需 Xcode + 签名）
+flutter build ios --release          # iOS (needs Xcode + signing)
 ```
 
-产物体积约 85MB（含全 ABI 与 Flutter 引擎）。
+The artifact is ~85 MB (all ABIs + Flutter engine).
 
-## 🗂 目录结构
+## 🗂 Project layout
 
 ```
 lib/
-  data/local_db.dart      # sqflite 单例，DB v7
-  services/               # AI 调用 + Prompt 构建（中/英）
-  providers/              # Provider 状态
-  pages/                  # 首页/冰箱/厨房/统计/设置/引导
-  models/                 # 数据模型
-  utils/                  # 数量/餐次/默认厨具与调味料
+  data/local_db.dart      # sqflite singleton, DB v7
+  services/               # AI calls + Prompt building (zh/en)
+  providers/              # Provider state
+  pages/                  # Home / Fridge / Kitchen / Stats / Settings / Onboarding
+  models/                 # data models
+  utils/                  # quantity, meal type, default utensils & seasonings
   l10n/                   # gen-l10n ARB + AppLocalizations
-assets/images/            # 品牌与界面插图
+assets/images/            # brand & UI illustrations
 ```
 
-> App 名（iOS `CFBundleDisplayName` / Android `android:label`）为 **肥鱼大厨**；包名 / bundle id：`com.feiyudachu.deepfry`。
+> Display name (iOS `CFBundleDisplayName` / Android `android:label`) is **肥鱼大厨**; package / bundle id: `com.feiyudachu.deepfry`.
 
-## 📄 许可证
+## 📄 License
 
-本项目基于 [MIT](LICENSE) 协议开源。
+This project is licensed under the [MIT](LICENSE) License.
 
-## ⚠️ 说明
+## ⚠️ Notes
 
-- 数据全部**本地存储**（sqflite），不会上传；切换语言会清空菜谱/冰箱/调味料（历史烹饪记录保留）。
-- 生成依赖你配置的 AI 服务，接口费用与可用性由对应服务商负责。
+- All data is stored **locally** (sqflite) and never uploaded; switching language clears recipes/fridge/seasonings (cooking history is kept).
+- Generation depends on the AI service you configure; fees & availability are the provider's responsibility.
