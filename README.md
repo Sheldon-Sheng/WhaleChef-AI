@@ -1,66 +1,69 @@
-# DeepFry 🍟
+# 肥鱼大厨（Whale Chef AI）· 工程名 DeepFry
 
-一个跨平台（iOS + Android）移动 App 模板，基于 **Flutter 3.47** 构建。
+一个 **Flutter 智能厨房 / 一周菜谱规划 App**（iOS + Android）。填写身体数据、让 AI 生成一周菜谱、自动算采购差量、按天扣减冰箱/采购、统计每周摄入卡路里。
 
-## 快速开始
+## ✨ 功能特性
+
+- **AI 生成一周菜谱**：每餐带食材数量 + 调味品；支持荤素配比、加汤、烹饪时间、菜系、餐次（早/午/晚）、收藏优先等自定义。
+- **健康与过敏约束**：填写慢性病、过敏的食物后，Prompt 会要求 AI **严格避开忌口/过敏食材**。
+- **按冰箱算差量**：菜谱需求 − 冰箱存量 = 采购清单；按名字/单位一致才可扣减。
+- **完成烹饪自动扣减**：冰箱优先扣，不足从采购清单扣，归零即删；调味品用完会提示并加入采购。
+- **每周卡路里统计**：点「已完成今天的烹饪」自动记录当日菜谱与卡路里，底部「统计」页展示**每周柱状图**（X = 周一起止日期，Y = 该周累计卡路里）。
+- **中/英双语**：跟随系统语言默认，可在设置里手动切换；AI Prompt 也按语言切换，AI 以对应语言回复。
+- **必须用已有厨具**：Prompt 要求菜谱能用你填写的厨具完成烹饪。
+
+## 🛠 技术栈
+
+- **Flutter 3.47 / Dart 3.13**，状态管理 **Provider**
+- 本地数据 **sqflite**（`deepfry.db`，含用户资料/冰箱/厨房/菜谱/采购/烹饪记录）
+- AI 集成：**OpenAI 兼容 chat/completions**（DeepSeek / OpenAI / Moonshot / 通义千问 / 智谱 GLM / SiliconFlow / 自定义）
+- 图表 **fl_chart**，本地化 **gen-l10n**，偏好持久化 **shared_preferences**
+
+## 🚀 快速开始
 
 ```bash
-# 进入项目目录
-cd deepfry
-
-# 获取依赖
+# 1. 拉取依赖
 flutter pub get
 
-# 运行（会自动启动已连接的模拟器/真机）
+# 2. 首次会生成 l10n 产物（已提交，也可手动生成）
+flutter gen-l10n
+
+# 3. 运行（连模拟器/真机）
 flutter run
 ```
 
-### 在 iOS 模拟器运行
+**配置 AI**：设置 → AI 配置，填入 `API Key`、`模型名称`、`Base URL`（选择预设或自定义，如 `https://api.deepseek.com/v1`）。
 
-1. 确保已安装 Xcode 和 CocoaPods
-2. 启动模拟器：`open -a Simulator`
-3. 运行：`flutter run`
+## 📦 打包
 
-### 在 Android 模拟器运行
+```bash
+flutter build apk --release          # Android APK
+flutter build ios --release          # iOS（需 Xcode + 签名）
+```
 
-1. 安装 Android Studio，打开后安装 Android SDK
-2. 创建 Android 虚拟设备 (AVD) 并启动
-3. 运行：`flutter run`
+产物体积约 85MB（含全 ABI 与 Flutter 引擎）。
 
-## 项目结构
+## 🗂 目录结构
 
 ```
 lib/
-├── main.dart              # App 入口，配置主题
-├── pages/
-│   ├── home_page.dart     # 首页 — 功能卡片列表
-│   └── settings_page.dart # 设置 — 主题切换 & 关于
-test/
-└── widget_test.dart       # 基础冒烟测试
+  data/local_db.dart      # sqflite 单例，DB v7
+  services/               # AI 调用 + Prompt 构建（中/英）
+  providers/              # Provider 状态
+  pages/                  # 首页/冰箱/厨房/统计/设置/引导
+  models/                 # 数据模型
+  utils/                  # 数量/餐次/默认厨具与调味料
+  l10n/                   # gen-l10n ARB + AppLocalizations
+assets/images/            # 品牌与界面插图
 ```
 
-## 如何添加新功能
+> App 名（iOS `CFBundleDisplayName` / Android `android:label`）为 **肥鱼大厨**；包名 / bundle id：`com.feiyudachu.deepfry`。
 
-1. 在 `lib/pages/` 下新建页面文件，例如 `my_feature_page.dart`
-2. 在 `home_page.dart` 中增加一张卡片，点击跳转到新页面
-3. 运行 `flutter run` 热重载即可看到效果
+## 📄 许可证
 
-## 技术栈
+本项目基于 [MIT](LICENSE) 协议开源。
 
-| 层 | 选择 |
-|---|---|
-| 框架 | Flutter 3.47 (Dart 3.13) |
-| UI 库 | Material Design 3 |
-| 主题 | 内置亮色 / 暗色双主题 |
-| 状态管理 | StatefulWidget（内置，可替换为 Provider / Riverpod） |
+## ⚠️ 说明
 
-## 常见问题
-
-**Q: flutter doctor 显示 Android 工具链缺失？**
-A: 安装 Android Studio，首次启动时会自动下载 Android SDK。完成后运行 `flutter doctor --android-licenses` 接受许可。
-
-**Q: 如何修改 App 图标？**
-A: 替换 `android/app/src/main/res/` 和 `ios/Runner/Assets.xcassets/AppIcon.appiconset/` 下的图标文件。
-
-**Q: 如何添加网络请求？**
-A: 在 `pubspec.yaml` 的 `dependencies` 中添加 `http` 或 `dio` 包，然后运行 `flutter pub get`。
+- 数据全部**本地存储**（sqflite），不会上传；切换语言会清空菜谱/冰箱/调味料（历史烹饪记录保留）。
+- 生成依赖你配置的 AI 服务，接口费用与可用性由对应服务商负责。
