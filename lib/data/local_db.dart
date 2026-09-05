@@ -8,6 +8,7 @@ import '../models/kitchen_item.dart';
 import '../models/weekly_plan.dart';
 import '../models/recipe.dart';
 import '../models/shopping_item.dart';
+import '../models/cooking_record.dart';
 
 class LocalDB {
   static final LocalDB _instance = LocalDB._internal();
@@ -21,7 +22,7 @@ class LocalDB {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       path ?? join(dbPath, 'deepfry.db'),
-      version: 5,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -114,6 +115,30 @@ class LocalDB {
         );
       }
     }
+    if (oldVersion < 6) {
+      // v5→v6: 新增烹饪记录表（完成烹饪时按天记录，用于每周卡路里统计）
+      await db.execute('''
+        CREATE TABLE cooking_records (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          record_date INTEGER NOT NULL UNIQUE,
+          day_index INTEGER NOT NULL,
+          week_start INTEGER NOT NULL,
+          total_calories REAL NOT NULL DEFAULT 0,
+          recipe_detail TEXT NOT NULL DEFAULT '[]',
+          created_at INTEGER NOT NULL
+        )
+      ''');
+    }
+    if (oldVersion < 7) {
+      // v6→v7: user_profile 加 allergens（过敏的食物）
+      final cols = await db.rawQuery('PRAGMA table_info(user_profile)');
+      final colNames = cols.map((c) => c['name']).toSet();
+      if (!colNames.contains('allergens')) {
+        await db.execute(
+          'ALTER TABLE user_profile ADD COLUMN allergens TEXT DEFAULT ""',
+        );
+      }
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -131,6 +156,7 @@ class LocalDB {
         target_body_fat REAL NOT NULL,
         preferred_foods TEXT DEFAULT '',
         disliked_foods TEXT DEFAULT '',
+        allergens TEXT DEFAULT '',
         updated_at INTEGER NOT NULL
       )
     ''');
@@ -194,6 +220,17 @@ class LocalDB {
         api_key TEXT NOT NULL DEFAULT '',
         model TEXT NOT NULL DEFAULT 'deepseek-v4-flash',
         base_url TEXT NOT NULL DEFAULT ''
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE cooking_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        record_date INTEGER NOT NULL UNIQUE,
+        day_index INTEGER NOT NULL,
+        week_start INTEGER NOT NULL,
+        total_calories REAL NOT NULL DEFAULT 0,
+        recipe_detail TEXT NOT NULL DEFAULT '[]',
+        created_at INTEGER NOT NULL
       )
     ''');
   }
@@ -423,6 +460,75 @@ class LocalDB {
         'weekly_plans',
         where: 'created_at < ?',
         whereArgs: [timestamp],
+      );
+      await txn.delete(
+        'cooking_records',
+        where: 'record_date < ?',
+        whereArgs: [timestamp],
+      );
+    });
+  }
+
+  // === Cooking Records（完成烹饪记录，用于每周卡路里统计） ===
+
+  /// 保存(按 record_date 幂等覆盖)一条烹饪记录
+  Future<void> saveCookingRecord(CookingRecord record) async {
+    await db.insert(
+      'cooking_records',
+      record.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// 按日期升序返回所有烹饪记录
+  Future<List<CookingRecord>> getCookingRecords() async {
+    final maps = await db.query('cooking_records', orderBy: 'record_date ASC');
+    return maps.map((m) => CookingRecord.fromMap(m)).toList();
+  }
+
+  /// 按「周一起点」分组,返回每周累积卡路里(升序)
+  Future<List<({int weekStart, double total})>> getWeeklyCalories() async {
+    final rows = await db.rawQuery(
+      'SELECT week_start, SUM(total_calories) AS total '
+      'FROM cooking_records GROUP BY week_start ORDER BY week_start ASC',
+    );
+    return rows
+        .map(
+          (r) => (
+            weekStart: r['week_start'] as int,
+            total: (r['total'] as num).toDouble(),
+          ),
+        )
+        .toList();
+  }
+
+  /// 最近一周(最大的 week_start 那一周)烹饪记录里的菜名集合，供 AI 避免重复。
+  Future<List<String>> getLastWeekDishNames() async {
+    final records = await getCookingRecords();
+    if (records.isEmpty) return const [];
+    final lastWeekStart = records.last.weekStart;
+    final names = <String>{};
+    for (final r in records.where((r) => r.weekStart == lastWeekStart)) {
+      for (final item in r.recipeItems) {
+        if (item.name.trim().isNotEmpty) names.add(item.name.trim());
+      }
+    }
+    return names.toList();
+  }
+
+  /// 清空用户生成的数据（语言切换时调用）。
+  /// 保留 user_profile / ai_config / 厨具(tool)；删除 菜谱、采购、每周计划、冰箱食材、调味料(seasoning)。
+  /// 因 sqflite 默认不启用外键级联，须手动先删子表再删父表。
+  Future<void> clearUserGeneratedData() async {
+    await db.transaction((txn) async {
+      await txn.delete('shopping_items');
+      await txn.delete('recipes');
+      await txn.delete('weekly_plans');
+      await txn.delete('ingredients');
+      await txn.delete(
+        'kitchen_items',
+        where: 'type = ?',
+        whereArgs: ['seasoning'],
       );
     });
   }
@@ -728,11 +834,7 @@ class LocalDB {
   Future<Map<String, String>> getAIConfig() async {
     final maps = await db.query('ai_config', limit: 1);
     if (maps.isEmpty) {
-      return {
-        'api_key': '',
-        'model': 'deepseek-v4-flash',
-        'base_url': '',
-      };
+      return {'api_key': '', 'model': 'deepseek-v4-flash', 'base_url': ''};
     }
     return {
       'api_key': maps.first['api_key'] as String? ?? '',

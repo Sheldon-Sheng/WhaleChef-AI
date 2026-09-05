@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 访问 AI 接口所需的网络权限(debug/profile 由 Flutter 自动注入,release 需手动声明) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="肥鱼大厨"
         android:name="${applicationName}"

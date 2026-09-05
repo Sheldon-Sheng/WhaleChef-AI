@@ -1,16 +1,16 @@
 // lib/models/ingredient.dart
+import '../utils/quantity.dart';
+
 class Ingredient {
   final int? id;
   final String name;
   final double amount; // 数量数值
-  final String unit;   // 单位，如 "个"、"g"、"份"
+  final String unit; // 单位，如 "个"、"g"、"份"
   final String? category;
   final int updatedAt;
 
-  /// 展示数量；amount 为 0 视为「适量」
-  String get quantity => amount > 0
-      ? (amount == amount.roundToDouble() ? '${amount.toInt()}$unit' : '$amount$unit')
-      : (unit.isEmpty ? '适量' : unit);
+  /// 展示数量；amount 为 0 视为「适量 / as needed」
+  String get quantity => formatQuantity(amount, unit);
 
   Ingredient({
     this.id,
@@ -22,7 +22,11 @@ class Ingredient {
   }) : updatedAt = updatedAt ?? DateTime.now().millisecondsSinceEpoch;
 
   /// 从旧版 quantity 字符串解析（如 "5个"、"500g"、"适量"）
-  factory Ingredient.fromQuantity(String name, String quantity, {String? category}) {
+  factory Ingredient.fromQuantity(
+    String name,
+    String quantity, {
+    String? category,
+  }) {
     final match = RegExp(r'^([\d.]+)\s*(.*)$').firstMatch(quantity.trim());
     if (match != null) {
       return Ingredient(
@@ -32,7 +36,12 @@ class Ingredient {
         category: category,
       );
     }
-    return Ingredient(name: name, amount: 0, unit: quantity, category: category);
+    return Ingredient(
+      name: name,
+      amount: 0,
+      unit: quantity,
+      category: category,
+    );
   }
 
   Map<String, dynamic> toMap() => {

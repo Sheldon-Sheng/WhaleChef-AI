@@ -9,6 +9,9 @@ import '../models/shopping_item.dart';
 import 'prompt_builder.dart';
 import 'deepseek_api.dart';
 import '../utils/quantity.dart';
+import '../l10n/app_error.dart';
+import '../l10n/app_language.dart';
+import '../utils/meal_type.dart';
 
 class MealPlannerService {
   final LocalDB _db = LocalDB();
@@ -37,18 +40,20 @@ class MealPlannerService {
     int veggieDishes = 2,
     bool wantSoup = true,
     int cookingTimeMinutes = 30,
-    String cuisineStyle = '中餐',
+    String? cuisineStyle,
     bool wantBreakfast = true,
     bool wantLunch = true,
     bool wantDinner = true,
     bool preferFavorites = false,
     int favoriteCount = 0,
+    bool isEnglish = false,
   }) async {
     await _initAPI();
+    final cu = cuisineStyle ?? defaultCuisineStyle();
 
     // 1. 获取所有数据
     final user = await _db.getUserProfile();
-    if (user == null) throw Exception('请先完成个人资料设置');
+    if (user == null) throw const AppError(AppErrorCode.missingProfile);
 
     final fridgeItems = await _db.getIngredients();
     final kitchenItems = await _db.getKitchenItems();
@@ -72,6 +77,9 @@ class MealPlannerService {
       favoriteRecipes = await _db.getFavoriteRecipes();
     }
 
+    // 2c. 上一周已做过的菜，要求 AI 避免重复
+    final lastWeekDishNames = await _db.getLastWeekDishNames();
+
     // 3. 组装 Prompt
     final prompt = PromptBuilder.buildPrompt(
       user: user,
@@ -80,17 +88,19 @@ class MealPlannerService {
       seasonings: seasonings,
       historyRecipes: historyRecipes,
       favoriteRecipes: favoriteRecipes,
+      avoidDishNames: lastWeekDishNames,
       dishesCount: dishesCount,
       meatDishes: meatDishes,
       veggieDishes: veggieDishes,
       wantSoup: wantSoup,
       cookingTimeMinutes: cookingTimeMinutes,
-      cuisineStyle: cuisineStyle,
+      cuisineStyle: cu,
       wantBreakfast: wantBreakfast,
       wantLunch: wantLunch,
       wantDinner: wantDinner,
       preferFavorites: preferFavorites,
       favoriteCount: favoriteCount,
+      isEnglish: isEnglish,
     );
 
     // 4. 调用 API
@@ -104,7 +114,7 @@ class MealPlannerService {
       veggieDishes: veggieDishes,
       wantSoup: wantSoup,
       cookingTimeMinutes: cookingTimeMinutes,
-      cuisineStyle: cuisineStyle,
+      cuisineStyle: cu,
     );
 
     return result;
@@ -118,15 +128,17 @@ class MealPlannerService {
     int veggieDishes = 2,
     bool wantSoup = true,
     int cookingTimeMinutes = 30,
-    String cuisineStyle = '中餐',
+    String? cuisineStyle,
     bool wantBreakfast = true,
     bool wantLunch = true,
     bool wantDinner = true,
+    bool isEnglish = false,
   }) async {
     await _initAPI();
+    final cu = cuisineStyle ?? defaultCuisineStyle();
 
     final user = await _db.getUserProfile();
-    if (user == null) throw Exception('请先完成个人资料设置');
+    if (user == null) throw const AppError(AppErrorCode.missingProfile);
 
     final fridgeItems = await _db.getIngredients();
     final kitchenItems = await _db.getKitchenItems();
@@ -143,22 +155,27 @@ class MealPlannerService {
     final now = DateTime.now().millisecondsSinceEpoch;
     final historyRecipes = await _db.getRecipesInDateRange(oneMonthAgo, now);
 
+    // 上一周已做过的菜，要求 AI 避免重复
+    final lastWeekDishNames = await _db.getLastWeekDishNames();
+
     final prompt = PromptBuilder.buildPrompt(
       user: user,
       fridgeItems: fridgeItems,
       tools: tools,
       seasonings: seasonings,
       historyRecipes: historyRecipes,
+      avoidDishNames: lastWeekDishNames,
       dishesCount: dishesCount,
       meatDishes: meatDishes,
       veggieDishes: veggieDishes,
       wantSoup: wantSoup,
       cookingTimeMinutes: cookingTimeMinutes,
-      cuisineStyle: cuisineStyle,
+      cuisineStyle: cu,
       startFromDay: startFromDay,
       wantBreakfast: wantBreakfast,
       wantLunch: wantLunch,
       wantDinner: wantDinner,
+      isEnglish: isEnglish,
     );
 
     final result = await _api.generateMealPlan(prompt);
@@ -178,7 +195,7 @@ class MealPlannerService {
       veggieDishes: veggieDishes,
       wantSoup: wantSoup,
       cookingTimeMinutes: cookingTimeMinutes,
-      cuisineStyle: cuisineStyle,
+      cuisineStyle: cu,
     );
     return result;
   }
@@ -194,7 +211,7 @@ class MealPlannerService {
     String cuisineStyle = '中餐',
   }) async {
     final weekPlan = result['week_plan'] as Map<String, dynamic>?;
-    if (weekPlan == null) throw Exception('返回数据格式错误：缺少 week_plan');
+    if (weekPlan == null) throw const AppError(AppErrorCode.missingWeekPlan);
 
     // 先完成旧的活跃计划
     final activePlan = await _db.getActivePlan();
@@ -202,8 +219,22 @@ class MealPlannerService {
       await _db.updatePlanStatus(activePlan.id!, 'completed');
     }
 
-    // 创建新计划
-    final weekStart = DateTime.now().millisecondsSinceEpoch;
+    // 创建新计划：以「今天」的真实日期定位，覆盖下一个完整周（下周一 00:00 起）。
+    // 之前误用 DateTime.now()（=今天此刻）当周起点，导致 UI 把今天当「周一」。
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    // 用 DateTime 构造器的日期运算（自动进位/借位），避免 Duration 跨天误差
+    final thisMonday = DateTime(
+      today.year,
+      today.month,
+      today.day - (today.weekday - 1),
+    );
+    final nextMonday = DateTime(
+      thisMonday.year,
+      thisMonday.month,
+      thisMonday.day + 7,
+    );
+    final weekStart = nextMonday.millisecondsSinceEpoch;
     final planConfig = jsonEncode({
       'dishes_count': dishesCount,
       'meat_dishes': meatDishes,
@@ -240,11 +271,11 @@ class MealPlannerService {
               'unit':
                   parsed?.unit ??
                   ((e['quantity'] ?? '').toString().isEmpty
-                      ? '适量'
+                      ? asNeededLabel
                       : (e['quantity'] ?? '').toString()),
             };
           }
-          return {'name': name, 'amount': 0, 'unit': '适量'};
+          return {'name': name, 'amount': 0, 'unit': asNeededLabel};
         }).toList();
         final seasonings =
             (meal['seasonings'] as List?)?.map((e) => e.toString()).toList() ??
@@ -329,7 +360,7 @@ class MealPlannerService {
             planId: activePlan.id!,
             name: seasoning.name,
             amount: 1,
-            unit: '份',
+            unit: AppLanguage.isEnglish ? 'serving' : '份',
             source: 'seasoning',
           ),
         );

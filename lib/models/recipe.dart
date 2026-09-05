@@ -1,6 +1,8 @@
 // lib/models/recipe.dart
 import 'dart:convert';
 
+import '../utils/quantity.dart';
+
 /// 菜谱中的一种食材（统一结构化数量；amount=0 为适量）
 class RecipeIngredient {
   final String name;
@@ -9,8 +11,7 @@ class RecipeIngredient {
   const RecipeIngredient({required this.name, this.amount = 0, this.unit = ''});
 
   /// 展示文本
-  String get displayQuantity =>
-      amount > 0 ? (amount == amount.roundToDouble() ? '${amount.toInt()}$unit' : '$amount$unit') : (unit.isEmpty ? '适量' : unit);
+  String get displayQuantity => formatQuantity(amount, unit);
 }
 
 class Recipe {
@@ -23,7 +24,7 @@ class Recipe {
   final double? calories;
   final bool isFavorite;
   final String ingredientList; // 食材 JSON: [{"name","amount","unit"}]
-  final String seasoningList;  // 调味品 JSON: ["盐"]
+  final String seasoningList; // 调味品 JSON: ["盐"]
 
   Recipe({
     this.id,
@@ -59,7 +60,9 @@ class Recipe {
   List<String> get seasoningItems {
     if (seasoningList.isEmpty) return const [];
     try {
-      return (jsonDecode(seasoningList) as List).map((e) => e.toString()).toList();
+      return (jsonDecode(seasoningList) as List)
+          .map((e) => e.toString())
+          .toList();
     } catch (_) {
       return const [];
     }
@@ -92,9 +95,14 @@ class Recipe {
   );
 
   Recipe copyWith({bool? isFavorite, String? seasoningList}) => Recipe(
-    id: id, planId: planId, dayIndex: dayIndex,
-    mealType: mealType, name: name, description: description,
-    calories: calories, ingredientList: ingredientList,
+    id: id,
+    planId: planId,
+    dayIndex: dayIndex,
+    mealType: mealType,
+    name: name,
+    description: description,
+    calories: calories,
+    ingredientList: ingredientList,
     seasoningList: seasoningList ?? this.seasoningList,
     isFavorite: isFavorite ?? this.isFavorite,
   );

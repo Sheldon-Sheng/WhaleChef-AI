@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../l10n/app_error.dart';
+
 /// 归一化 base URL：去首尾空白与尾部斜杠；空则保持为空（无默认值，需显式配置）
 String normalizeBaseUrl(String url) {
   var u = url.trim();
@@ -42,7 +44,7 @@ class DeepSeekAPI {
   /// 抛出异常：网络错误、API 错误、JSON 解析错误
   Future<Map<String, dynamic>> generateMealPlan(String prompt) async {
     if (_dio.options.baseUrl.trim().isEmpty) {
-      throw DeepSeekException('请先在设置中配置 API 地址 (Base URL)');
+      throw const AppError(AppErrorCode.baseUrlMissing);
     }
     try {
       final response = await _dio.post(
@@ -65,13 +67,13 @@ class DeepSeekAPI {
       );
 
       if (response.statusCode != 200) {
-        throw DeepSeekException('API 返回错误: ${response.statusCode}');
+        throw AppError(AppErrorCode.apiStatus, {'status': response.statusCode});
       }
 
       final body = response.data as Map<String, dynamic>;
       final choices = body['choices'] as List?;
       if (choices == null || choices.isEmpty) {
-        throw DeepSeekException('API 返回为空');
+        throw const AppError(AppErrorCode.apiEmpty);
       }
 
       final content = choices[0]['message']['content'] as String?;
@@ -84,10 +86,10 @@ class DeepSeekAPI {
             final jsonStr = _extractJSON(reasoningContent);
             return jsonDecode(jsonStr) as Map<String, dynamic>;
           } catch (e) {
-            throw DeepSeekException('JSON 解析失败: $e');
+            throw AppError(AppErrorCode.jsonParse, {'error': e.toString()});
           }
         }
-        throw DeepSeekException('API 返回内容为空');
+        throw const AppError(AppErrorCode.contentEmpty);
       }
 
       // 尝试解析 JSON
@@ -95,20 +97,20 @@ class DeepSeekAPI {
         final jsonStr = _extractJSON(content);
         return jsonDecode(jsonStr) as Map<String, dynamic>;
       } catch (e) {
-        throw DeepSeekException('JSON 解析失败: $e');
+        throw AppError(AppErrorCode.jsonParse, {'error': e.toString()});
       }
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        throw DeepSeekException('网络超时，请检查网络连接');
+        throw const AppError(AppErrorCode.timeout);
       }
       if (e.response?.statusCode == 401) {
-        throw DeepSeekException('API Key 无效，请在设置中检查');
+        throw const AppError(AppErrorCode.badApiKey);
       }
       if (e.response?.statusCode == 402) {
-        throw DeepSeekException('API 余额不足，请充值');
+        throw const AppError(AppErrorCode.insufficientBalance);
       }
-      throw DeepSeekException('网络请求失败: ${e.message}');
+      throw AppError(AppErrorCode.networkFailed, {'error': e.message ?? ''});
     }
   }
 
@@ -136,11 +138,4 @@ class DeepSeekAPI {
 
     return trimmed;
   }
-}
-
-class DeepSeekException implements Exception {
-  final String message;
-  DeepSeekException(this.message);
-  @override
-  String toString() => message;
 }

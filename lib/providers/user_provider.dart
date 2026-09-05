@@ -1,5 +1,6 @@
 // lib/providers/user_provider.dart
 import 'package:flutter/foundation.dart';
+
 import '../data/local_db.dart';
 import '../models/user_profile.dart';
 import '../models/recipe.dart';

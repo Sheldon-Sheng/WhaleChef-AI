@@ -29,7 +29,9 @@ class KitchenItem {
   );
 
   KitchenItem copyWith({bool? isAvailable}) => KitchenItem(
-    id: id, type: type, name: name,
+    id: id,
+    type: type,
+    name: name,
     isAvailable: isAvailable ?? this.isAvailable,
   );
 }

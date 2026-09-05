@@ -1,4 +1,4 @@
-package com.example.deepfry
+package com.feiyudachu.deepfry
 
 import io.flutter.embedding.android.FlutterActivity
 

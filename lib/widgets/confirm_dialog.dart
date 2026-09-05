@@ -1,12 +1,18 @@
 // lib/widgets/confirm_dialog.dart
 import 'package:flutter/material.dart';
 
-Future<bool?> showConfirmDialog(BuildContext context, {
+import '../l10n/app_localizations.dart';
+
+Future<bool?> showConfirmDialog(
+  BuildContext context, {
   required String title,
   required String message,
-  String confirmText = '确认',
-  String cancelText = '取消',
+  String? confirmText,
+  String? cancelText,
 }) {
+  final l10n = AppLocalizations.of(context);
+  final confirm = confirmText ?? l10n.confirm;
+  final cancel = cancelText ?? l10n.cancel;
   return showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
@@ -15,11 +21,11 @@ Future<bool?> showConfirmDialog(BuildContext context, {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: Text(cancelText),
+          child: Text(cancel),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(context, true),
-          child: Text(confirmText),
+          child: Text(confirm),
         ),
       ],
     ),

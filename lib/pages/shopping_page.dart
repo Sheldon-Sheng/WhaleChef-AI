@@ -1,8 +1,10 @@
 // lib/pages/shopping_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../data/local_db.dart';
 import '../providers/meal_plan_provider.dart';
+import '../l10n/app_localizations.dart';
 
 class ShoppingPage extends StatefulWidget {
   const ShoppingPage({super.key});
@@ -31,13 +33,20 @@ class _ShoppingPageState extends State<ShoppingPage> {
   }
 
   Future<void> _confirmPurchase() async {
+    final l10n = AppLocalizations.of(context);
     final provider = context.read<MealPlanProvider>();
     final db = LocalDB();
 
-    final selected = <({int itemId, String name, double amount, String unit})>[];
+    final selected =
+        <({int itemId, String name, double amount, String unit})>[];
     for (final item in provider.shoppingItems) {
       if (_selectedIds.contains(item.id)) {
-        selected.add((itemId: item.id!, name: item.name, amount: item.amount, unit: item.unit));
+        selected.add((
+          itemId: item.id!,
+          name: item.name,
+          amount: item.amount,
+          unit: item.unit,
+        ));
       }
     }
     if (selected.isEmpty) return;
@@ -50,14 +59,13 @@ class _ShoppingPageState extends State<ShoppingPage> {
       await provider.loadActivePlan();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已确认购买，食材已加入冰箱')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.purchaseSuccess)));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('操作失败: $e')),
+          SnackBar(content: Text(l10n.purchaseFailed(e.toString()))),
         );
       }
     }
@@ -65,19 +73,25 @@ class _ShoppingPageState extends State<ShoppingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final provider = context.watch<MealPlanProvider>();
     final items = provider.shoppingItems;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('食材采购清单'),
+        title: Text(l10n.shoppingListName),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           if (items.isNotEmpty)
             TextButton.icon(
               onPressed: () => _toggleSelectAll(provider),
-              icon: Icon(_allSelected(provider) ? Icons.deselect : Icons.select_all, size: 20),
-              label: Text(_allSelected(provider) ? '取消全选' : '全选'),
+              icon: Icon(
+                _allSelected(provider) ? Icons.deselect : Icons.select_all,
+                size: 20,
+              ),
+              label: Text(
+                _allSelected(provider) ? l10n.deselectAll : l10n.selectAll,
+              ),
             ),
         ],
       ),
@@ -88,7 +102,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
             child: Row(
               children: [
                 Text(
-                  '食材采购清单',
+                  l10n.shoppingListName,
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -97,7 +111,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
                 ),
                 const Spacer(),
                 Text(
-                  '${_selectedIds.length} 项已选',
+                  l10n.selectedCount(_selectedIds.length),
                   style: const TextStyle(fontSize: 13, color: Colors.grey),
                 ),
               ],
@@ -106,7 +120,12 @@ class _ShoppingPageState extends State<ShoppingPage> {
           const Divider(),
           Expanded(
             child: items.isEmpty
-                ? const Center(child: Text('采购清单为空', style: TextStyle(color: Colors.grey)))
+                ? Center(
+                    child: Text(
+                      l10n.shoppingEmpty,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  )
                 : ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     children: items.map((item) {
@@ -136,7 +155,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
               child: ElevatedButton.icon(
                 onPressed: _selectedIds.isEmpty ? null : _confirmPurchase,
                 icon: const Icon(Icons.check_circle_outline),
-                label: const Text('确认已购买'),
+                label: Text(l10n.confirmPurchased),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   textStyle: const TextStyle(fontSize: 16),
@@ -148,9 +167,12 @@ class _ShoppingPageState extends State<ShoppingPage> {
             height: 120,
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!, width: 1.5),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                width: 1.5,
+              ),
               borderRadius: BorderRadius.circular(8),
-              color: Colors.grey[50],
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -160,7 +182,11 @@ class _ShoppingPageState extends State<ShoppingPage> {
                 height: double.infinity,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.image_outlined, size: 40, color: Colors.grey),
+                  child: Icon(
+                    Icons.image_outlined,
+                    size: 40,
+                    color: Colors.grey,
+                  ),
                 ),
               ),
             ),

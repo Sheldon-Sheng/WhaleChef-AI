@@ -1,6 +1,9 @@
 // lib/widgets/ai_generating_overlay.dart
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../l10n/app_localizations.dart';
 
 class AIGeneratingOverlay extends StatefulWidget {
   final String imageAsset;
@@ -50,6 +53,7 @@ class _AIGeneratingOverlayState extends State<AIGeneratingOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -66,18 +70,26 @@ class _AIGeneratingOverlayState extends State<AIGeneratingOverlay> {
           ),
           // 前景内容（失败态居中；生成中的进度条在底部）
           Align(
-            alignment: widget.isFailed ? Alignment.center : Alignment.bottomCenter,
+            alignment: widget.isFailed
+                ? Alignment.center
+                : Alignment.bottomCenter,
             child: Container(
               margin: widget.isFailed
                   ? const EdgeInsets.all(32)
                   : const EdgeInsets.fromLTRB(16, 0, 16, 24),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: widget.isFailed ? Colors.white : Colors.black.withValues(alpha: 0.35),
+                color: widget.isFailed
+                    ? Colors.white
+                    : Colors.black.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: widget.isFailed
                     ? const [
-                        BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 4))
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        ),
                       ]
                     : null,
               ),
@@ -85,10 +97,19 @@ class _AIGeneratingOverlayState extends State<AIGeneratingOverlay> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (widget.isFailed) ...[
-                    const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.redAccent,
+                    ),
                     const SizedBox(height: 16),
-                    Text(widget.errorMessage ?? '生成失败',
-                        style: const TextStyle(fontSize: 16, color: Colors.black87)),
+                    Text(
+                      widget.errorMessage ?? l10n.generateFailed,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     Image.asset(
                       'assets/images/error.png',
@@ -100,18 +121,39 @@ class _AIGeneratingOverlayState extends State<AIGeneratingOverlay> {
                     ElevatedButton.icon(
                       onPressed: widget.onRetry,
                       icon: const Icon(Icons.refresh),
-                      label: const Text('重试'),
+                      label: Text(l10n.retry),
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
                       ),
                     ),
                   ] else ...[
-                    LinearProgressIndicator(value: _progress, minHeight: 8, borderRadius: BorderRadius.circular(4)),
+                    LinearProgressIndicator(
+                      value: _progress,
+                      minHeight: 8,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                     const SizedBox(height: 16),
-                    Text('${(_progress * 100).toInt()}%',
-                        style: const TextStyle(fontSize: 14, color: Colors.white)),
+                    Text(
+                      l10n.progressPercent((_progress * 100).toInt()),
+                      style: const TextStyle(fontSize: 14, color: Colors.white),
+                    ),
                     const SizedBox(height: 8),
-                    const Text('正在为您规划菜谱...', style: TextStyle(fontSize: 16, color: Colors.white)),
+                    Text(
+                      l10n.generating,
+                      style: const TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.generatingWait,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
                   ],
                 ],
               ),

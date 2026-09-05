@@ -1,5 +1,6 @@
 // lib/providers/fridge_provider.dart
 import 'package:flutter/foundation.dart';
+
 import '../data/local_db.dart';
 import '../models/ingredient.dart';
 

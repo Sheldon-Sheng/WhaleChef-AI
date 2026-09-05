@@ -1,5 +1,6 @@
 // lib/providers/kitchen_provider.dart
 import 'package:flutter/foundation.dart';
+
 import '../data/local_db.dart';
 import '../models/kitchen_item.dart';
 import '../services/meal_planner.dart';
@@ -11,8 +12,10 @@ class KitchenProvider extends ChangeNotifier {
   bool _isLoading = false;
 
   List<KitchenItem> get items => _items;
-  List<KitchenItem> get tools => _items.where((i) => i.type == KitchenItemType.tool).toList();
-  List<KitchenItem> get seasonings => _items.where((i) => i.type == KitchenItemType.seasoning).toList();
+  List<KitchenItem> get tools =>
+      _items.where((i) => i.type == KitchenItemType.tool).toList();
+  List<KitchenItem> get seasonings =>
+      _items.where((i) => i.type == KitchenItemType.seasoning).toList();
   bool get isLoading => _isLoading;
 
   Future<void> loadItems() async {

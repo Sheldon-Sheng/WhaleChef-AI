@@ -11,7 +11,8 @@ class UserProfile {
   final double targetWeight;
   final double targetBodyFat;
   final String preferredFoods; // 逗号分隔
-  final String dislikedFoods;  // 逗号分隔
+  final String dislikedFoods; // 逗号分隔
+  final String allergens; // 逗号分隔，过敏的食物
   final int updatedAt;
 
   UserProfile({
@@ -27,6 +28,7 @@ class UserProfile {
     required this.targetBodyFat,
     this.preferredFoods = '',
     this.dislikedFoods = '',
+    this.allergens = '',
     int? updatedAt,
   }) : updatedAt = updatedAt ?? DateTime.now().millisecondsSinceEpoch;
 
@@ -43,6 +45,7 @@ class UserProfile {
     'target_body_fat': targetBodyFat,
     'preferred_foods': preferredFoods,
     'disliked_foods': dislikedFoods,
+    'allergens': allergens,
     'updated_at': updatedAt,
   };
 
@@ -59,17 +62,29 @@ class UserProfile {
     targetBodyFat: map['target_body_fat'] as double,
     preferredFoods: map['preferred_foods'] as String? ?? '',
     dislikedFoods: map['disliked_foods'] as String? ?? '',
+    allergens: map['allergens'] as String? ?? '',
     updatedAt: map['updated_at'] as int? ?? 0,
   );
 
   UserProfile copyWith({
-    int? age, String? gender, double? height, double? weight,
-    double? bodyFatRate, String? healthReportNotes, String? chronicDiseases,
-    double? targetWeight, double? targetBodyFat,
-    String? preferredFoods, String? dislikedFoods,
+    int? age,
+    String? gender,
+    double? height,
+    double? weight,
+    double? bodyFatRate,
+    String? healthReportNotes,
+    String? chronicDiseases,
+    double? targetWeight,
+    double? targetBodyFat,
+    String? preferredFoods,
+    String? dislikedFoods,
+    String? allergens,
   }) => UserProfile(
-    id: id, age: age ?? this.age, gender: gender ?? this.gender,
-    height: height ?? this.height, weight: weight ?? this.weight,
+    id: id,
+    age: age ?? this.age,
+    gender: gender ?? this.gender,
+    height: height ?? this.height,
+    weight: weight ?? this.weight,
     bodyFatRate: bodyFatRate ?? this.bodyFatRate,
     healthReportNotes: healthReportNotes ?? this.healthReportNotes,
     chronicDiseases: chronicDiseases ?? this.chronicDiseases,
@@ -77,5 +92,6 @@ class UserProfile {
     targetBodyFat: targetBodyFat ?? this.targetBodyFat,
     preferredFoods: preferredFoods ?? this.preferredFoods,
     dislikedFoods: dislikedFoods ?? this.dislikedFoods,
+    allergens: allergens ?? this.allergens,
   );
 }

@@ -1,8 +1,10 @@
 // lib/pages/fridge_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/fridge_provider.dart';
 import '../models/ingredient.dart';
+import '../l10n/app_localizations.dart';
 
 class FridgePage extends StatefulWidget {
   const FridgePage({super.key});
@@ -50,119 +52,205 @@ class _FridgePageState extends State<FridgePage> {
   }
 
   void _showDialog() {
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: Text(_editingId == null ? '添加食材' : '编辑食材'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(controller: _nameController, decoration: const InputDecoration(labelText: '食材名')),
-          TextField(controller: _qtyController, decoration: const InputDecoration(labelText: '数量（如: 500g、3个）')),
-          TextField(controller: _categoryController, decoration: const InputDecoration(labelText: '分类（可选）')),
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          _editingId == null ? l10n.fridgeAddTitle : l10n.fridgeEditTitle,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(labelText: l10n.fridgeName),
+            ),
+            TextField(
+              controller: _qtyController,
+              decoration: InputDecoration(labelText: l10n.fridgeQty),
+            ),
+            TextField(
+              controller: _categoryController,
+              decoration: InputDecoration(labelText: l10n.fridgeCategory),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (_nameController.text.isEmpty || _qtyController.text.isEmpty) {
+                return;
+              }
+              final qtyMatch = RegExp(r'^([\d.]+)\s*(.*)$')
+                  .firstMatch(_qtyController.text.trim());
+              final amount = qtyMatch != null
+                  ? (double.tryParse(qtyMatch.group(1)!) ?? 0)
+                  : 0.0;
+              final unit = qtyMatch != null
+                  ? (qtyMatch.group(2)?.trim() ?? '')
+                  : _qtyController.text.trim();
+              if (_editingId != null) {
+                await context.read<FridgeProvider>().updateItem(
+                  Ingredient(
+                    id: int.parse(_editingId!),
+                    name: _nameController.text,
+                    amount: amount,
+                    unit: unit,
+                    category: _categoryController.text.isNotEmpty
+                        ? _categoryController.text
+                        : null,
+                  ),
+                );
+              } else {
+                await context.read<FridgeProvider>().addItem(
+                  Ingredient(
+                    name: _nameController.text,
+                    amount: amount,
+                    unit: unit,
+                    category: _categoryController.text.isNotEmpty
+                        ? _categoryController.text
+                        : null,
+                  ),
+                );
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: Text(l10n.save),
+          ),
         ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
-        ElevatedButton(onPressed: () async {
-          if (_nameController.text.isEmpty || _qtyController.text.isEmpty) return;
-          final qtyMatch = RegExp(r'^([\d.]+)\s*(.*)$').firstMatch(_qtyController.text.trim());
-          final amount = qtyMatch != null ? (double.tryParse(qtyMatch.group(1)!) ?? 0) : 0.0;
-          final unit = qtyMatch != null ? (qtyMatch.group(2)?.trim() ?? '') : _qtyController.text.trim();
-          if (_editingId != null) {
-            await context.read<FridgeProvider>().updateItem(Ingredient(
-              id: int.parse(_editingId!),
-              name: _nameController.text,
-              amount: amount,
-              unit: unit,
-              category: _categoryController.text.isNotEmpty ? _categoryController.text : null,
-            ));
-          } else {
-            await context.read<FridgeProvider>().addItem(Ingredient(
-              name: _nameController.text,
-              amount: amount,
-              unit: unit,
-              category: _categoryController.text.isNotEmpty ? _categoryController.text : null,
-            ));
-          }
-          if (ctx.mounted) Navigator.pop(ctx);
-        }, child: const Text('保存')),
-      ],
-    ));
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final provider = context.watch<FridgeProvider>();
     final items = provider.items;
 
     // 按分类分组
     final grouped = <String, List<Ingredient>>{};
     for (final item in items) {
-      final cat = item.category ?? '未分类';
+      final cat = item.category ?? l10n.fridgeUncategorized;
       grouped.putIfAbsent(cat, () => []).add(item);
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('冰箱'), backgroundColor: Theme.of(context).colorScheme.inversePrimary, actions: [
-        IconButton(icon: const Icon(Icons.add), onPressed: _showAddDialog),
-        IconButton(
-          icon: const Icon(Icons.delete_sweep),
-          onPressed: items.isEmpty ? null : () async {
-            final ok = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('清空冰箱'),
-                content: const Text('确定要清空冰箱中所有食材吗？此操作不可撤销。'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-                  ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('清空')),
-                ],
-              ),
-            );
-            if (ok == true) {
-              await context.read<FridgeProvider>().clearAll();
-            }
-          },
-        ),
-      ]),
-      body: provider.isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : items.isEmpty
-          ? const Center(child: Text('冰箱是空的，点击右上角 + 添加食材'))
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: grouped.entries.map((entry) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(entry.key, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  ...entry.value.map((item) => Card(
-                    child: ListTile(
-                      title: Text(item.name),
-                      subtitle: Text(item.quantity),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () => _showEditDialog(item)),
-                          IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () async {
-                            final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-                              title: const Text('确认删除'),
-                              content: Text('确定删除「${item.name}」吗？'),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-                                ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('删除')),
-                              ],
-                            ));
-                            if (confirm == true && context.mounted) {
-                              context.read<FridgeProvider>().deleteItem(item.id!);
-                            }
-                          }),
+      appBar: AppBar(
+        title: Text(l10n.tabFridge),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(icon: const Icon(Icons.add), onPressed: _showAddDialog),
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            onPressed: items.isEmpty
+                ? null
+                : () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text(l10n.fridgeClearTitle),
+                        content: Text(l10n.fridgeClearBody),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text(l10n.cancel),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text(l10n.clear),
+                          ),
                         ],
                       ),
+                    );
+                    if (ok == true) {
+                      await context.read<FridgeProvider>().clearAll();
+                    }
+                  },
+          ),
+        ],
+      ),
+      body: provider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : items.isEmpty
+          ? Center(child: Text(l10n.fridgeEmpty))
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: grouped.entries
+                  .map(
+                    (entry) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.key,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...entry.value.map(
+                          (item) => Card(
+                            child: ListTile(
+                              title: Text(item.name),
+                              subtitle: Text(item.quantity),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 20),
+                                    onPressed: () => _showEditDialog(item),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      size: 20,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: Text(l10n.deleteConfirmTitle),
+                                          content: Text(
+                                            l10n.deleteConfirmBody(item.name),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, false),
+                                              child: Text(l10n.cancel),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, true),
+                                              child: Text(l10n.delete),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true && context.mounted) {
+                                        context
+                                            .read<FridgeProvider>()
+                                            .deleteItem(item.id!);
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
-                  )),
-                  const SizedBox(height: 16),
-                ],
-              )).toList(),
+                  )
+                  .toList(),
             ),
     );
   }

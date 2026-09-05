@@ -7,6 +7,12 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:deepfry/data/local_db.dart';
 import 'package:deepfry/models/ingredient.dart';
+import 'package:deepfry/models/weekly_plan.dart';
+import 'package:deepfry/models/recipe.dart';
+import 'package:deepfry/models/shopping_item.dart';
+import 'package:deepfry/models/kitchen_item.dart';
+import 'package:deepfry/models/user_profile.dart';
+import 'package:deepfry/models/cooking_record.dart';
 
 void main() {
   setUpAll(() async {
@@ -86,5 +92,80 @@ void main() {
     expect(config['api_key'], 'test-key');
     expect(config['model'], 'test-model');
     expect(config['base_url'], 'https://api.openai.com/v1');
+  });
+
+  test('clearUserGeneratedData 语言切换清空用户数据，保留工具/资料/配置', () async {
+    final db = LocalDB();
+
+    // 种子数据
+    final planId = await db.addWeeklyPlan(
+      WeeklyPlan(weekStart: 1, planConfig: '{}'),
+    );
+    await db.addRecipe(
+      Recipe(planId: planId, dayIndex: 0, mealType: '早餐', name: '粥'),
+    );
+    await db.addShoppingItem(
+      ShoppingItem(planId: planId, name: '番茄', amount: 2, unit: '个'),
+    );
+    await db.saveIngredient('番茄', 2, '个');
+    await db.addKitchenItem(
+      KitchenItem(type: KitchenItemType.tool, name: '菜刀'),
+    );
+    await db.addKitchenItem(
+      KitchenItem(type: KitchenItemType.seasoning, name: '盐'),
+    );
+    await db.saveUserProfile(
+      UserProfile(
+        age: 25,
+        gender: '男',
+        height: 170,
+        weight: 65,
+        targetWeight: 60,
+        targetBodyFat: 20,
+      ),
+    );
+    await db.saveAIConfig('k', 'm', 'https://api.deepseek.com/v1');
+    // 烹饪记录属历史日志，语言切换时保留
+    await db.saveCookingRecord(
+      CookingRecord(
+        recordDate: DateTime(2026, 8, 3).millisecondsSinceEpoch,
+        dayIndex: 0,
+        weekStart: DateTime(2026, 8, 3).millisecondsSinceEpoch,
+        totalCalories: 120,
+      ),
+    );
+
+    await db.clearUserGeneratedData();
+
+    // 菜谱/采购/计划清空
+    expect(await db.getActivePlan(), isNull);
+    expect(await db.getRecipesByPlan(planId), isEmpty);
+    expect(await db.getShoppingItems(planId), isEmpty);
+    // 冰箱食材清空
+    expect(await db.getIngredients(), isEmpty);
+    // 调味料清空，但厨具保留
+    expect(await db.getKitchenItems(type: 'seasoning'), isEmpty);
+    expect((await db.getKitchenItems(type: 'tool')).length, 1);
+    // 保留 user_profile / ai_config
+    expect(await db.getUserProfile(), isNotNull);
+    expect((await db.getAIConfig())['api_key'], 'k');
+    // 烹饪历史保留
+    expect((await db.getCookingRecords()).length, 1);
+  });
+
+  test('UserProfile allergens 往返', () async {
+    await LocalDB().saveUserProfile(
+      UserProfile(
+        age: 30,
+        gender: '男',
+        height: 170,
+        weight: 60,
+        targetWeight: 55,
+        targetBodyFat: 18,
+        allergens: '花生,虾',
+      ),
+    );
+    final u = await LocalDB().getUserProfile();
+    expect(u!.allergens, '花生,虾');
   });
 }
